@@ -24,8 +24,8 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
   val depOptions: DeploymentOptions = DeploymentOptions().setWorker(true)
   val eventBus: EventBus = vertx.eventBus()
   val router: Router = Router.router(vertx)
-  val routePut: Route = router.route(HttpMethod.GET, "/putDocument").handler(handlePutDocument)
-  val routeDel: Route = router.route(HttpMethod.GET, "/deleteDocument").handler(handleDeleteDocument)
+  val routePut: Route = router.route(HttpMethod.GET, "/pdfSrcServer/putDocument").handler(handlePutDocument)
+  val routeDel: Route = router.route(HttpMethod.GET, "/pdfSrcServer/deleteDocument").handler(handleDeleteDocument)
   val myVerticle = new PdfSrcVerticle(pdfSrcServer)
 
   vertx.deployVerticle(myVerticle, depOptions)

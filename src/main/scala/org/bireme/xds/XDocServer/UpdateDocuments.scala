@@ -20,14 +20,15 @@ import scala.util.{Failure, Success, Try}
 object UpdateDocuments extends App {
 
   private def usage(): Unit = {
-    System.err.println("usage: UpdateDocuments " +
+    System.err.println("\nusage: UpdateDocuments [OPTIONS]" +
+      "\n\nOPTIONS" +
       "\n\t-pdfDocDir=<dir> - directory where the pdf files will be stored" +
       "\n\t[-thumbDir=<dir>] - directory where the thumbnail files will be stored" +
-      "\n\t[-solrColUrl=<url>] - solr collection url. For ex: http://localhost:8983/solr/myCollection"+
+      "\n\t[-solrColUrl=<url>] - solr collection url. For ex: http://localhost:8983/solr/pdfs"+
       "\n\t[-communities=com1,com2,..,comN] - communities used to filter documents to generate de pdf/thumbnail files" +
       "\n\t[-fromDate=YYYY-MM-DD] - initial date used to filter documents to generate de pdf/thumbnail files" +
-      "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored in metadata documents. For ex: http://localhost:9090/getDocument" +
-      "\n\t[--reset] - if present will create an empty collection to store pdf/thumbnail files"
+      "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/getDocument" +
+      "\n\t[--reset] - if present, will create empty collections to store pdf/thumbnail files"
     )
     System.exit(1)
   }
@@ -43,6 +44,7 @@ object UpdateDocuments extends App {
         case _ => usage();map
       }
   }
+  if (!parameters.contains("pdfDocDir")) usage()
 
   val fiadminApi = "http://fi-admin.bvsalud.org/api"
   val pdfDocDir = parameters("pdfDocDir").trim
@@ -67,6 +69,9 @@ object UpdateDocuments extends App {
              communities: Option[Array[String]],
              fromDate: Option[String],
              reset: Boolean): Unit = {
+    if (solrColUrl.isEmpty) println("!!! Solr url collection is missing. Pdf files will not be indexed!")
+    if (thumbDir.isEmpty) println("!!! Thumbnail server url is missing. Pdf thumbnail files will not be stored!")
+
     if (reset) Tools.deleteDirectory(new File(pdfDocDir))
 
     val lpds: LocalPdfDocServer = new LocalPdfDocServer(new FSDocServer(new File(pdfDocDir)))
@@ -85,35 +90,39 @@ object UpdateDocuments extends App {
         new LocalThumbnailServer(new FSDocServer(new File(thumb)), Right(lpds))
     }
 
-    getMetadata(communities, fromDate) foreach {
-      meta =>
-        val id: Option[Seq[String]] = meta.get("id")
-        val url: Option[Seq[String]] = meta.get("ur")
+    if (solrColUrl.isDefined || thumbDir.isDefined) {
+      getMetadata(communities, fromDate) foreach {
+        meta =>
+          val id: Option[Seq[String]] = meta.get("id")
+          val url: Option[Seq[String]] = meta.get("ur")
 
-        if (id.isEmpty || url.isEmpty) {
-          if (id.isDefined) println(s"---- Empty url. id=${id.get.head}")
-          else if (url.isDefined) println(s"---- Empty id. url=${url.get.head}")
-          else println(s"---- Empty url and url")
-        }
-        else {
-          val idStr: String = id.get.head
-          val urlStr: String = url.get.head
+          if (id.isEmpty) println(s"---- Empty id. id=${url.get.head}")
+          else if (url.isEmpty) println(s"---- Empty url. id=${id.get.head}")
+          else {
+            val idStr: String = id.get.head
+            val urlStr: String = url.get.head
 
-          lpss.foreach { pss =>
-            println(s"+++ loading and indexing pdf document id=$idStr url=$urlStr")
-            if (pss.createDocument(idStr, urlStr, Some(meta)) == 201) {
-              lts.foreach { ts =>
-                //println(s"+++ creating thumbnail document id=$idStr url=$urlStr")
-                if (ts.createDocument(idStr, urlStr, None) != 201)
-                  println(s"---- LocalThumbnailServer document creation error. id=$idStr url=$urlStr")
-              }
-            } else
-              println(s"---- LocalPdfSrcServer document creation error. id=$idStr url=$urlStr")
+            println(s"+++ id=$idStr url=$urlStr")
+
+            lpss match {
+              case Some(pss) =>
+                println(s"+++ loading and indexing pdf document id=$idStr url=$urlStr")
+                if (pss.createDocument(idStr, urlStr, Some(meta)) != 201) {
+                  println(s"--- LocalPdfSrcServer document creation error. id=$idStr url=$urlStr")
+                } else {
+                  lts.foreach { ts =>
+                    //println(s"+++ creating thumbnail document id=$idStr url=$urlStr")
+                    if (ts.createDocument(idStr, urlStr, None) != 201)
+                      println(s"--- LocalThumbnailServer document creation error. id=$idStr url=$urlStr")
+                  }
+                }
+              case None =>
+                if (lpss.isEmpty && (lpds.createDocument(idStr, urlStr, None) != 201)) {
+                  println(s"--- LocalPdfDocServer document creation error. id=$idStr url=$urlStr")
+                }
+            }
           }
-          if (lpss.isEmpty && lts.isEmpty && (lpds.createDocument(idStr, urlStr, None) != 201)) {
-            println(s"---- LocalPdfDocServer document creation error. id=$idStr url=$urlStr")
-          }
-        }
+      }
     }
   }
 
@@ -172,8 +181,8 @@ object UpdateDocuments extends App {
   private def getMetadata(comId: String,
                           colId: String,
                           elem: ACursor): Map[String,Seq[String]] = {
-    val docId = parseId(elem)
-    val url = parseDocUrl(elem)
+    val docId: Seq[String] = parseId(elem)
+    val url: Seq[String] = parseDocUrl(elem)
 
     println(s"+++ parsing metadata - community:$comId collection:$colId document:${docId.head}")
 
@@ -192,7 +201,7 @@ object UpdateDocuments extends App {
       "com" -> Seq(comId), //parseCommunity(elem),
       "col" -> Seq(colId), //parseCollection(elem),
       "ud" -> parseUpdDate(elem),
-      "tu" -> parseThumbUrl(docId.head, url.head)
+      "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
     ).filterNot(kv => kv._2.isEmpty)
   }
 

@@ -101,11 +101,17 @@ class FSDocServer(rootDir: File) extends DocumentServer {
       Try {
         Tools.url2ByteArray(new URL(url)) match {
           case Some(arr) =>
-            if (!dir.exists()) dir.mkdir()
-            val fos = new FileOutputStream(file)
-            fos.write(arr)
-            fos.close()
-            writeDocInfo(infoFile, info.getOrElse(createDocumentInfo(idT) + ("url" -> Seq(url))))
+            if (arr.isEmpty) 500
+            else {
+              if (!dir.exists()) dir.mkdir()
+              val fos = new FileOutputStream(file)
+              fos.write(arr)
+              fos.close()
+              writeDocInfo(
+                infoFile,
+                info.getOrElse(createDocumentInfo(idT) + ("url" -> Seq(url)))
+              )
+            }
           case None => 500
         }
       } match {

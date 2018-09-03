@@ -119,19 +119,27 @@ class SolrDocServer(url: String) extends DocumentServer {
       case _ => // 404 (not found)
         Tools.inputStream2Array(source) match {
           case Some(arr) =>
-            //println(s"arr size=${arr.size}")
-
-            Try(Http(url1 + "update/extract").header("Content-type", "application/pdf").timeout(timeout, timeout)
-              .params(parameters).postData(arr).asString) match {
-              case Success(response: HttpResponse[String]) =>
-                //println(s"response=${response.body}")
-                response.code match {
-                  case 200 => 201
-                  case _   => 500
-                }
-              case Failure(exception) =>
-                println(s"exception=$exception")
-                500
+            //println(s"arr size=${arr.length}")
+            if (arr.length == 0) 500
+            else {
+              Try(
+                Http(url1 + "update/extract")
+                  .header("Content-type", "application/pdf")
+                  .timeout(timeout, timeout)
+                  .params(parameters)
+                  .postData(arr)
+                  .asString
+              ) match {
+                case Success(response: HttpResponse[String]) =>
+                  //println(s"response=${response.body}")
+                  response.code match {
+                    case 200 => 201
+                    case _   => 500
+                  }
+                case Failure(exception) =>
+                  println(s"exception=$exception")
+                  500
+              }
             }
           case None => 500
         }

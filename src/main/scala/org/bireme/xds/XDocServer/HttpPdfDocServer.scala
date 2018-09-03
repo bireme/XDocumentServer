@@ -24,8 +24,8 @@ class HttpPdfDocServer(pdfDocServer: LocalPdfDocServer,
   val options: HttpServerOptions = HttpServerOptions().setPort(pdfServerPort).setLogActivity(true)
   val server: HttpServer = vertx.createHttpServer(options)
   val router: Router = Router.router(vertx)
-  val routeGet: Route = router.route(HttpMethod.GET, "/getDocument").blockingHandler(handleGetDocument)
-  val routeDelete: Route = router.route(HttpMethod.GET, "/deleteDocument").blockingHandler(handleDeleteDocument)
+  val routeGet: Route = router.route(HttpMethod.GET, "/pdfDocServer/getDocument").blockingHandler(handleGetDocument)
+  val routeDelete: Route = router.route(HttpMethod.GET, "/pdfDocServer/deleteDocument").blockingHandler(handleDeleteDocument)
 
   server.requestHandler(router.accept _)
   server.listen()
