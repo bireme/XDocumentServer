@@ -37,7 +37,7 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
             }
           case Right(map) => // There is a previous document stored
             val sUrl = map.getOrElse("url", Seq("")).head
-            if (url1.equals(sUrl)) getDocument(id)  // The url new and stored are the same, so retrieve the stored version
+            if (url1.trim.isEmpty || url1.trim.equals(sUrl)) getDocument(id)  // The url new and stored are the same, so retrieve the stored version
             else createDocument2(id, url1, info, deleteBefore = true)// Store the new version because urls are different
         }
       case None => getDocument(id) // There is no new url version, so retrieve the stored version
@@ -48,15 +48,18 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
                               url: String,
                               info: Option[Map[String, Seq[String]]],
                               deleteBefore: Boolean = false): Either[Int, InputStream] = {
-    val status = if (deleteBefore) deleteDocument(id) else 200
+    if (url.trim.isEmpty) Left(404)
+    else {
+      val status = if (deleteBefore) deleteDocument(id) else 200
 
-    status match {
-      case 200 =>
-        createDocument(id, url, info) match {
-          case 201 => getDocument(id)
-          case err => Left(err)
-        }
-      case err => Left(err)
+      status match {
+        case 200 =>
+          createDocument(id, url, info) match {
+            case 201 => getDocument(id)
+            case err => Left(err)
+          }
+        case err => Left(err)
+      }
     }
   }
 

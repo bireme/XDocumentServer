@@ -63,7 +63,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
             }
           case Right(map) => // There is a previous document stored
             val sUrl = map.getOrElse("url", Seq("")).head
-            if (url1.equals(sUrl)) getDocument(id)  // The url new and stored are the same, so retrieve the stored version
+            if (url1.trim.isEmpty || url1.trim.equals(sUrl)) getDocument(id)  // The url new and stored are the same, so retrieve the stored version
             else {  // Store the new version because urls are different
               deleteDocument(id)
               createDocument2(id, url)
