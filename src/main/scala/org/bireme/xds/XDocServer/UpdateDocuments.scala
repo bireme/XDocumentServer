@@ -27,7 +27,7 @@ object UpdateDocuments extends App {
       "\n\t[-solrColUrl=<url>] - solr collection url. For ex: http://localhost:8983/solr/pdfs"+
       "\n\t[-communities=com1,com2,..,comN] - communities used to filter documents to generate de pdf/thumbnail files" +
       "\n\t[-fromDate=YYYY-MM-DD] - initial date used to filter documents to generate de pdf/thumbnail files" +
-      "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/getDocument" +
+      "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
       "\n\t[--reset] - if present, will create empty collections to store pdf/thumbnail files"
     )
     System.exit(1)
@@ -48,7 +48,7 @@ object UpdateDocuments extends App {
 
   val fiadminApi = "http://fi-admin.bvsalud.org/api"
   val pdfDocDir = parameters("pdfDocDir").trim
-  val thumbServUrl = parameters.get("thumbServUrl").map { turl => // http:/localhost:9090/getDocument
+  val thumbServUrl = parameters.get("thumbServUrl").map { turl => // http:/localhost:9090/thumbnailServer/getDocument
      val url = turl.trim
      if (url.endsWith("/")) url else s"$url/"
   }
