@@ -111,9 +111,10 @@ object UpdateDocuments extends App {
                   println(s"--- LocalPdfSrcServer document creation error. id=$idStr url=$urlStr")
                 } else {
                   lts.foreach { ts =>
-                    //println(s"+++ creating thumbnail document id=$idStr url=$urlStr")
+                    //
                     if (ts.createDocument(idStr, urlStr, None) != 201)
                       println(s"--- LocalThumbnailServer document creation error. id=$idStr url=$urlStr")
+                    else println(s"+++ thumbnail created. id=$idStr url=$urlStr")
                   }
                 }
               case None =>
@@ -154,7 +155,7 @@ object UpdateDocuments extends App {
                           colId: String,
                           fromDate: String): Seq[Map[String,Seq[String]]] = {
     Try {
-      val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&status=1&format=json$fromDate", "utf-8")
+      val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&status=1&limit=0&format=json$fromDate", "utf-8")
       val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
       src.close()
       doc
@@ -207,7 +208,7 @@ object UpdateDocuments extends App {
 
   private def getCommunityIds: Option[Set[String]] = {
     Try {
-      val src: BufferedSource = Source.fromURL(s"$fiadminApi/community?format=json", "utf-8")
+      val src: BufferedSource = Source.fromURL(s"$fiadminApi/community?limit=0&format=json", "utf-8")
       val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
       src.close()
       doc
@@ -235,7 +236,7 @@ object UpdateDocuments extends App {
 
   private def getCollectionIds(communityId: String): Option[Set[String]] = {
     Try {
-      val src: BufferedSource = Source.fromURL(s"$fiadminApi/collection/?community=$communityId&format=json", "utf-8")
+      val src: BufferedSource = Source.fromURL(s"$fiadminApi/collection/?community=$communityId&limit=0&format=json", "utf-8")
       val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
       src.close()
       doc
