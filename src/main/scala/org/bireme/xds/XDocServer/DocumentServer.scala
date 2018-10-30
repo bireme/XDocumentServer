@@ -57,6 +57,17 @@ trait DocumentServer {
                       info: Option[Map[String, Seq[String]]] = None): Int
 
   /**
+    * Replace a stored document if there is some or create a new one otherwise
+    * @param id document identifier
+    * @param url the location where the document is
+    * @param info metadata of the document
+    * @return a http error code. 201(created) if new , 200(ok) if replaced or 500 (internal server error)
+    */
+  def replaceDocument(id: String,
+                      url: String,
+                      info: Option[Map[String, Seq[String]]]): Int
+
+  /**
     * Delete a stored document
     * @param id document identifier
     * @return a http error code. 200 (ok) or 404 (not found) or 500 (internal server error)

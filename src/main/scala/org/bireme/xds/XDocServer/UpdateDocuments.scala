@@ -7,7 +7,8 @@
 
 package org.bireme.xds.XDocServer
 
-import java.io.File
+import java.io.{ByteArrayInputStream, File}
+import java.net.URL
 
 import io.circe._
 import io.circe.parser._
@@ -17,56 +18,13 @@ import scala.util.{Failure, Success, Try}
 
 //https://github.com/bireme/fi-admin/wiki/API
 
-object UpdateDocuments extends App {
-
-  private def usage(): Unit = {
-    System.err.println("\nusage: UpdateDocuments [OPTIONS]" +
-      "\n\nOPTIONS" +
-      "\n\t-pdfDocDir=<dir> - directory where the pdf files will be stored" +
-      "\n\t[-thumbDir=<dir>] - directory where the thumbnail files will be stored" +
-      "\n\t[-solrColUrl=<url>] - solr collection url. For ex: http://localhost:8983/solr/pdfs"+
-      "\n\t[-communities=com1,com2,..,comN] - communities used to filter documents to generate de pdf/thumbnail files" +
-      "\n\t[-fromDate=YYYY-MM-DD] - initial date used to filter documents to generate de pdf/thumbnail files" +
-      "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
-      "\n\t[--reset] - if present, will create empty collections to store pdf/thumbnail files"
-    )
-    System.exit(1)
-  }
-  if (args.length < 1) usage()
-
-  val parameters = args.foldLeft[Map[String,String]](Map()) {
-    case (map, par) =>
-      val split = par.split(" *= *", 2)
-
-      split.size match {
-        case 1 => map + (split(0).substring(2) -> "")
-        case 2 => map + (split(0).substring(1) -> split(1))
-        case _ => usage();map
-      }
-  }
-  if (!parameters.contains("pdfDocDir")) usage()
-
+class UpdateDocuments(pdfDocDir: String,
+                      solrColUrl: Option[String],
+                      thumbDir: Option[String],
+                      thumbServUrl: Option[String]) {
   val fiadminApi = "http://fi-admin.bvsalud.org/api"
-  val pdfDocDir = parameters("pdfDocDir").trim
-  val thumbServUrl = parameters.get("thumbServUrl").map { turl => // http:/localhost:9090/thumbnailServer/getDocument
-     val url = turl.trim
-     if (url.endsWith("/")) url else s"$url/"
-  }
-  val solrColUrl = parameters.get("solrColUrl").map(_.trim)
-  val thumbDir = parameters.get("thumbDir").map(_.trim)
-  val communities = parameters.get("communities").map(_.trim.split(" *\\, *"))
-  val fromDate = parameters.get("fromDate").map(_.trim)
-  val reset = parameters.contains("reset")
-  val date = "(19[789]|20[01])[0-9]\\-(0[1-9]|1[012])\\-[01][0-9]"
 
-  fromDate.foreach(fdate => if (!fdate.matches(date)) usage())
-
-  update(pdfDocDir, solrColUrl, thumbDir, communities, fromDate, reset)
-
-  def update(pdfDocDir: String,
-             solrColUrl: Option[String],
-             thumbDir: Option[String],
-             communities: Option[Array[String]],
+  def addAll(communities: Option[Array[String]],
              fromDate: Option[String],
              reset: Boolean): Unit = {
     if (solrColUrl.isEmpty) println("!!! Solr url collection is missing. Pdf files will not be indexed!")
@@ -82,7 +40,7 @@ object UpdateDocuments extends App {
           sds.deleteCollection()
           sds.createCollection()
         }
-        new LocalPdfSrcServer(sds, Right(lpds))
+        new LocalPdfSrcServer(sds, lpds)
     }
     val lts: Option[LocalThumbnailServer] = thumbDir.map {
       thumb =>
@@ -124,6 +82,47 @@ object UpdateDocuments extends App {
             }
           }
       }
+    }
+  }
+
+  def updateOne(docId: String): Boolean = {
+    assert(pdfDocDir != null)
+    assert(docId != null)
+
+    val lpds: LocalPdfDocServer = new LocalPdfDocServer(new FSDocServer(new File(pdfDocDir)))
+    val lpss: Option[LocalPdfSrcServer] = solrColUrl.map {
+      solr => new LocalPdfSrcServer(new SolrDocServer(solr), lpds)
+    }
+    val lts: Option[LocalThumbnailServer] = thumbDir.map {
+      thumb => new LocalThumbnailServer(new FSDocServer(new File(thumb)), Right(lpds))
+    }
+
+    getMetadata(docId) exists {
+      meta =>
+        val id: Option[Seq[String]] = meta.get("id")
+        val url: Option[Seq[String]] = meta.get("ur")
+        val idStr: String = id.get.head
+        val urlStr: String = url.get.head
+
+        if (id.isEmpty || url.isEmpty) false
+        else {
+          Tools.url2ByteArray(new URL(urlStr)).exists {
+            arr =>
+              val bais = new ByteArrayInputStream(arr)
+              bais.mark(Integer.MAX_VALUE)
+              if (solrColUrl.isDefined || thumbDir.isDefined) { // solr server or thumbnail server is present
+                Try {
+                  lpss match { // LocalPdfSrcServer
+                    case Some(pss) =>
+                      val b1: Boolean = pss.replaceDocument(idStr, bais, Some(meta)) != 500
+                      bais.reset()
+                      b1 && lts.forall(_.replaceDocument(idStr, bais, None) != 500) // LocalThumbnailServer
+                    case None => lpds.replaceDocument(idStr, new URL(urlStr).openStream(), None) != 500 // LocalPdfDocServer
+                  }
+                }.isSuccess
+              } else lpds.replaceDocument(idStr, bais, None) != 500 // LocalPdfDocServer
+          }
+        }
     }
   }
 
@@ -169,6 +168,49 @@ object UpdateDocuments extends App {
     }
   }
 
+  private def getMetadata(docId: String): Option[Map[String,Seq[String]]] = {
+    Try {
+      val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&status=1&limit=1&format=json", "utf-8")
+      val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
+      src.close()
+      doc
+    } match {
+      case Success(json) => json match {
+        case Right(js: Json) => getMetadata(js.hcursor.downField("objects").downArray.first)
+        case Left(_) => None
+      }
+      case Failure(x) => println(x);None
+    }
+  }
+
+  private def getMetadata(elem: ACursor): Option[Map[String,Seq[String]]] = {
+    if (elem.succeeded) {
+      val docId: Seq[String] = parseId(elem)
+      val url: Seq[String] = parseDocUrl(elem)
+      val comId2: Seq[String] = parseCommunity(elem)
+      val colId2: Seq[String] = parseCollection(elem)
+
+      val map: Map[String, Seq[String]] = Map(
+        "id" -> docId,
+        "ti" -> parseTitle(elem),
+        "type" -> parseDocType(elem),
+        "au" -> parseAuthor(elem),
+        "da" -> parseYear(elem),
+        "kw" -> parseKeyword(elem),
+        "fo" -> parseSource(elem),
+        "ab" -> parseAbstr(elem),
+        "ur" -> url,
+        "la" -> parseLanguage(elem),
+        "mh" -> parseDescriptor(elem),
+        "com" -> comId2,
+        "col" -> colId2,
+        "ud" -> parseUpdDate(elem),
+        "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
+      )
+      Some(map.filterNot(kv => kv._2.isEmpty))
+    } else None
+  }
+
   private def getMetadata(comId: String,
                          colId: String,
                          elem: ACursor,
@@ -184,10 +226,12 @@ object UpdateDocuments extends App {
                           elem: ACursor): Map[String,Seq[String]] = {
     val docId: Seq[String] = parseId(elem)
     val url: Seq[String] = parseDocUrl(elem)
+    val comId2: Seq[String] = parseCommunity(elem)
+    val colId2: Seq[String] = parseCollection(elem)
 
     println(s"+++ parsing metadata - community:$comId collection:$colId document:${docId.head}")
 
-    Map(
+    val map: Map[String, Seq[String]] = Map(
       "id" -> docId,
       "ti" -> parseTitle(elem),
       "type" -> parseDocType(elem),
@@ -199,11 +243,12 @@ object UpdateDocuments extends App {
       "ur" -> url,
       "la" -> parseLanguage(elem),
       "mh" -> parseDescriptor(elem),
-      "com" -> Seq(comId), //parseCommunity(elem),
-      "col" -> Seq(colId), //parseCollection(elem),
+      "com" -> comId2,
+      "col" -> colId2,
       "ud" -> parseUpdDate(elem),
       "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
-    ).filterNot(kv => kv._2.isEmpty)
+    )
+    map.filterNot(kv => kv._2.isEmpty)
   }
 
   private def getCommunityIds: Option[Set[String]] = {
@@ -417,9 +462,39 @@ object UpdateDocuments extends App {
     } else seq
   }
 
-  //private def parseCommunity(elem: ACursor): Seq[String] = Seq[String]()
+  private def parseCommunity(elem: ACursor): Seq[String] = {
+    parseCommunity(elem.downField("community").downArray.first, Seq[String]())
+  }
 
-  //private def parseCollection(elem: ACursor): Seq[String] = Seq[String]()
+  private def parseCommunity(elem: ACursor,
+                             seq: Seq[String]): Seq[String] = {
+    if (elem.succeeded) {
+      val text: String = elem.as[String].getOrElse("")
+
+      if (text.isEmpty) parseCommunity(elem.right, seq)
+      else {
+        val text2 = text.replaceAll("\\|([^\\^]+)\\^", "\\|\\($1\\) ")
+        parseCommunity(elem.right, seq :+ text2)
+      }
+    } else seq
+  }
+
+  private def parseCollection(elem: ACursor): Seq[String] = {
+    parseCollection(elem.downField("collection").downArray.first, Seq[String]())
+  }
+
+  private def parseCollection(elem: ACursor,
+                              seq: Seq[String]): Seq[String] = {
+    if (elem.succeeded) {
+      val text: String = elem.as[String].getOrElse("")
+
+      if (text.isEmpty) parseCollection(elem.right, seq)
+      else {
+        val text2 = text.replaceAll("\\|([^\\^]+)\\^", "\\|\\($1\\) ")
+        parseCollection(elem.right, seq :+ text2)
+      }
+    } else seq
+  }
 
   private def parseUpdDate(elem: ACursor): Seq[String] = Seq(elem.downField("updated_time").as[String].getOrElse(""))
 
@@ -427,5 +502,61 @@ object UpdateDocuments extends App {
                             url: String): Seq[String] = thumbServUrl match {
     case Some(tsu) => Seq(s"$tsu?id=$id&url=$url")
     case None      => Seq("")
+  }
+}
+
+object UpdateDocuments extends App {
+
+  private def usage(): Unit = {
+    System.err.println(
+      "\nusage: UpdateDocuments [OPTIONS]" +
+        "\n\nOPTIONS" +
+        "\n\t-pdfDocDir=<dir> - directory where the pdf files will be stored" +
+        "\n\t[-thumbDir=<dir>] - directory where the thumbnail files will be stored" +
+        "\n\t[-solrColUrl=<url>] - solr collection url. For ex: http://localhost:8983/solr/pdfs" +
+        "\n\t[-docId=<id>] - update only one document whose id is <id>. if used, -communities, -fromDate and --reset parameters are ignored" +
+        "\n\t[-communities=com1,com2,..,comN] - communities used to filter documents to generate de pdf/thumbnail files" +
+        "\n\t[-fromDate=YYYY-MM-DD] - initial date used to filter documents to generate de pdf/thumbnail files" +
+        "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
+        "\n\t[--reset] - if present, will create empty collections to store pdf/thumbnail files"
+    )
+    System.exit(1)
+  }
+  if (args.length < 1) usage()
+
+  val parameters = args.foldLeft[Map[String, String]](Map()) {
+    case (map, par) =>
+      val split = par.split(" *= *", 2)
+
+      split.size match {
+        case 1 => map + (split(0).substring(2) -> "")
+        case 2 => map + (split(0).substring(1) -> split(1))
+        case _ => usage(); map
+      }
+  }
+  if (!parameters.contains("pdfDocDir")) usage()
+
+  val pdfDocDir = parameters("pdfDocDir").trim
+  val thumbServUrl: Option[String] =
+    parameters.get("thumbServUrl").map { turl => // http:/localhost:9090/thumbnailServer/getDocument
+      val url = turl.trim
+      if (url.endsWith("/")) url else s"$url/"
+    }
+  val solrColUrl = parameters.get("solrColUrl").map(_.trim)
+  val thumbDir = parameters.get("thumbDir").map(_.trim)
+  val docId = parameters.get("docId").map(_.trim)
+  val communities = parameters.get("communities").map(_.trim.split(" *\\, *"))
+  val fromDate = parameters.get("fromDate").map(_.trim)
+  val reset = parameters.contains("reset")
+  val date = "(19[789]|20[01])[0-9]\\-(0[1-9]|1[012])\\-[01][0-9]"
+  val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, thumbServUrl)
+
+  fromDate.foreach(fdate => if (!fdate.matches(date)) usage())
+
+  docId match {
+    case Some(did) =>
+      updDocuments.updateOne(did)
+    case None =>
+      updDocuments.addAll(communities, fromDate, reset)
   }
 }

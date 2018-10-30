@@ -7,44 +7,40 @@
 
 package org.bireme.xds.XDocServer
 
+import io.circe.Json
 import io.vertx.lang.scala.ScalaVerticle
+import io.vertx.scala.core.eventbus.EventBus
 import wvlet.log.LogSupport
+
+import scala.util.Try
 
 class PdfSrcVerticle(pdfSrcServer: LocalPdfSrcServer) extends ScalaVerticle with LogSupport {
   override def start(): Unit = {
-    val eb = vertx.eventBus()
+    val eb: EventBus = vertx.eventBus()
     println("PdfSrcVerticle is now running ...")
 
     eb.consumer(
       "org.bireme.xds.XDocServer.put",
       (message: io.vertx.scala.core.eventbus.Message[String]) => {
         println("Processing put request...")
+        Try {
+          val mapParams: Map[String, Seq[String]] = Tools.string2Map(message.body())
+          val id: Option[Seq[String]] = mapParams.get("id")
+          val url: Option[Seq[String]] = mapParams.get("ur")
 
-        val mapParams: Map[String, Seq[String]] = Tools.string2Map(message.body())
-        val id: Option[Seq[String]] = mapParams.get("id")
-        val url: Option[Seq[String]] = mapParams.get("url")
-
-        if (id.isEmpty || url.isEmpty) error("id.isEmpty || url.isEmpty")
-        else {
-          // Verify if the document is already stored
-          pdfSrcServer.getDocument2(id.get.head) match {
-            case Right(_) => // yes, then delete it and create it
-              pdfSrcServer.deleteDocument(id.get.head) match {
-                case 500 => error(s"Document deletion: code=500 id=${id.get.head} url=${url.get.head}")
-                case _ =>
-                  val ret = pdfSrcServer.createDocument(id.get.head, url.get.head, Some(mapParams))
-                  if (ret == 201) info(s"Document created: id=${id.get} url=${url.get}")
-                  else error(s"Document creation: code=$ret id=${id.get.head} url=${url.get.head} params=$mapParams")
-              }
-            case Left(value) =>
-              value match {
-                case 404 => // no, then create it
-                  val ret = pdfSrcServer.createDocument(id.get.head, url.get.head, Some(mapParams))
-                  if (ret == 201) info(s"Document created: id=${id.get} url=${url.get}")
-                  else error(s"Document creation: code=$ret id=${id.get.head} url=${url.get.head} params=$mapParams")
-                case err => error(s"Document deletion: code=$err id=${id.get.head} url=${url.get.head}")
-              }
+          if (id.isEmpty || url.isEmpty) error("id.isEmpty || url.isEmpty")
+          else {
+            pdfSrcServer.replaceDocument(id.get.head, url.get.head, Some(mapParams)) match {
+              case 500 =>
+                error(
+                  s"Document creation: id=${id.get.head} url=${url.get.head} params=$mapParams"
+                )
+              case _ => info(s"Document created: id=${id.get} url=${url.get}")
+            }
           }
+        } match {
+          case scala.util.Success(value) => ()
+          case scala.util.Failure(exception) => error(exception.getMessage)
         }
       }
     )
@@ -61,6 +57,31 @@ class PdfSrcVerticle(pdfSrcServer: LocalPdfSrcServer) extends ScalaVerticle with
           pdfSrcServer.deleteDocument(id) match {
             case 200 => info(s"Document deleted: id=$id")
             case err => error(s"Document not deleted: code=$err id=$id")
+          }
+        }
+      }
+    )
+
+    eb.consumer(
+      "org.bireme.xds.XDocServer.info",
+      (message: io.vertx.scala.core.eventbus.Message[String]) => {
+        println("Processing info request...")
+
+        val id: String = message.body()
+
+        if (id.isEmpty) error("id.isEmpty")
+        else {
+          //Either[Int, Map[String, Seq[String]]]
+          pdfSrcServer.getDocumentInfo(id) match {
+            case Right(inf) =>
+              val inf2: Seq[(String, Json)] =
+                inf.map(kv => kv._1 -> Json.fromValues(kv._2.map(str => Json.fromString(str))) ).toSeq
+              val json: Json = Json.obj(inf2: _*)
+              info(s"Document deleted: id=$id")
+              message.reply(json.spaces2)
+            case Left(err) =>
+              error(s"Document info: code=$err id=$id")
+              message.reply("**")
           }
         }
       }

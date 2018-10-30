@@ -1,3 +1,10 @@
+/*=========================================================================
+
+    XDocumentServer © Pan American Health Organization, 2018.
+    See License at: https://github.com/bireme/XDocumentServer/blob/master/LICENSE.txt
+
+  ==========================================================================*/
+
 package org.bireme.xds.XDocServer
 
 import java.io.File
@@ -9,16 +16,15 @@ import org.scalatest.FlatSpec
 class LocalPdfDocServerTest extends FlatSpec {
   // id(issn), url, title, year
   val parameters = Set(
-    ("1677-7042", "http://pesquisa.in.gov.br/imprensa/jsp/visualiza/index.jsp?jornal=1&pagina=68&data=22/09/2017",
-     "Politica Nacional de Atenção Básica (2017/PORTARIA)", "2017"),
-    ("978-85-334-1939-1", "http://189.28.128.100/dab/docs/publicacoes/geral/pnab.pdf",
-      "Política Nacional de Atenção Básica (2012)", "2012"),
-    ("978-85-334-1911-7", "http://bvsms.saude.gov.br/bvs/publicacoes/politica_nacional_alimentacao_nutricao.pdf",
-     "Política Nacional de Alimentação e Nutrição", "2012"),
-    ("78-85-334-2146-2", "http://bvsms.saude.gov.br/bvs/publicacoes/politica_nacional_praticas_integrativas_complementares_2ed.pdf",
-     "Política Nacional de Práticas Integrativas e Complementares no SUS - PNPIC-SUS: atitude de ampliação de acesso", "2006"),
-    ("no_issn", "http://189.28.128.100/dab/docs/publicacoes/geral/diretrizes_da_politica_nacional_de_saude_bucal.pdf",
-     "Diretrizes da política nacional de saúde bucal", "2004")
+    ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
+    "Critérios Diagnósticos de Infecção Relacionada à Assistência à Saúde", "2013"),
+    ("2", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf",
+      "Participação popular nas ações de educação em saúde", "2014"),
+    ("3", "http://www.escoladesaude.pr.gov.br/arquivos/File/TEXTOS_CURSO_VIGILANCIA/capacitacao_e_atualizacao_em_geoprocessamento_em_saude_3.pdf",
+      "Introdução à Estatística Espacial para a Saúde Pública ", "2007"),
+    ("4", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf", "Guia de Vigilância em Saúde", "2016"),
+    ("5", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf",
+      "LIVRO DE RECURSOS DA OMS SOBRE SAÚDE MENTAL, DIREITOS HUMANOS E LEGISLAÇÃO", "2005")
   )
 
   val dir: File = new File("pdfs2")
@@ -55,7 +61,7 @@ class LocalPdfDocServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          val omap = Map("id" -> Seq(param._1), "url" -> Seq(param._2), "title" -> Seq(param._3), "year" -> Seq(param._4))
+          val omap = Map("id" -> Seq(param._1.trim), "url" -> Seq(param._2.trim), "title" -> Seq(param._3.trim), "year" -> Seq(param._4.trim))
           lpds.getDocumentInfo(param._1) exists (map => map.equals(omap))
       }
     )
@@ -130,7 +136,7 @@ class LocalPdfDocServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          val omap = Map("id" -> Seq(param._1), "url" -> Seq(param._2), "title" -> Seq(param._3), "year" -> Seq(param._4))
+          val omap = Map("id" -> Seq(param._1.trim), "url" -> Seq(param._2.trim), "title" -> Seq(param._3.trim), "year" -> Seq(param._4.trim))
           lpds.getDocumentInfo(param._1) exists(map => map.equals(omap))
       }
     )
@@ -143,6 +149,7 @@ class LocalPdfDocServerTest extends FlatSpec {
           lpds.getDocument(param._1) exists {
             is => Tools.inputStream2Array(is) exists {
               arr =>
+                is.close()
                 Tools.url2InputStream(new URL(param._2)) exists {
                   is2 => Tools.inputStream2Array(is2) exists {
                     a2 =>

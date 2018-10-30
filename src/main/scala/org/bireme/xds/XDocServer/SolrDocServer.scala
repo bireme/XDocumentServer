@@ -27,7 +27,8 @@ class SolrDocServer(url: String) extends DocumentServer {
   val mainFields = Set("id",      // identificador,
                        "_text_")  // texto do documento
 
-  val metadataFields = Set("ti",            // título
+  val metadataFields = Set("id",            // identificador
+                           "ti",            // título
                            "type",          // tipo de documento
                            "au",            // autor
                            "da",            // ano
@@ -37,14 +38,14 @@ class SolrDocServer(url: String) extends DocumentServer {
                            "ur",            // url
                            "la",            // idioma
                            "mh",            // descritores
-                           "community",     // comunidade
-                           "collection",    // coleção
-                           "updated_date",  // data de atualização
-                           "thumb_url")     // url do thumbnail
+                           "com",           // comunidade
+                           "col",           // coleção
+                           "ud",            // data de atualização
+                           "tu")            // url do thumbnail
   val timeout: Int = 4 * 60 * 1000
 
   /**
-    * List the ids of all pdf documents
+    * List the : $xids of all pdf documents
     *
     * @return a set having all pdf document ids
     */
@@ -207,11 +208,28 @@ class SolrDocServer(url: String) extends DocumentServer {
     */
   override def replaceDocument(id: String,
                                source: InputStream,
-                               info: Option[Map[String, Seq[String]]]): Int = {
+                               info: Option[Map[String, Seq[String]]] = None): Int = {
     val del: Int = deleteDocument(id)
 
     if (del == 500) 500
     else if (createDocument(id, source, info) == 500) 500
+    else if (del == 200) 200 else 201
+  }
+
+  /**
+    * Replace a stored document if there is some or create a new one otherwise
+    * @param id document identifier
+    * @param url the location where the document is
+    * @param info metadata of the document
+    * @return a http error code. 201(created) if new , 200(ok) if replaced or 500 (internal server error)
+    */
+  def replaceDocument(id: String,
+                      url: String,
+                      info: Option[Map[String, Seq[String]]]): Int = {
+    val del: Int = deleteDocument(id)
+
+    if (del == 500) 500
+    else if (createDocument(id, url, info) == 500) 500
     else if (del == 200) 200 else 201
   }
 
@@ -265,9 +283,13 @@ class SolrDocServer(url: String) extends DocumentServer {
               Right(it.foldLeft(Map[String, Seq[String]]()) {
                 case (mp, key: String) =>
                   if (metadataFields.contains(key)) {
-                    doc.downField(key).as[Array[String]] match {
+                    val elem = doc.downField(key)
+                    elem.as[Array[String]] match {
                       case Right(arr) => mp + (key -> arr.toSeq)
-                      case Left(_) => mp
+                      case Left(_) => elem.as[String] match {
+                        case Right(str) => mp + (key -> Seq(str))
+                        case Left(_) => mp
+                      }
                     }
                   } else mp
               })

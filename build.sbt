@@ -2,26 +2,26 @@ lazy val root = (project in file("."))
   .settings(
     inThisBuild(List(
       organization := "org.bireme",
-      scalaVersion := "2.12.6",
+      scalaVersion := "2.12.7",
       version      := "0.1.0-SNAPSHOT"
     )),
     name := "XDocumentServer"
   )
 
-val pdfboxVersion = "2.0.9"
-val pdfboxAppVersion = "2.0.9"
+val pdfboxVersion = "2.0.12" // "2.0.9"
+val pdfboxAppVersion = "2.0.12" // "2.0.9"
 val jpef2000Version =  "1.3.0"
 val jaiImageioCoreVersion = "1.4.0"
-val sttpVersion = "1.2.1"
-val vertxVersion = "3.5.2"
+val sttpVersion = "1.3.9" // "1.2.1"
+val vertxVersion = "3.5.4" // "3.5.2"
 //val solrScalaClientVersion = "0.0.19"
-val solrCellVersion = "7.4.0"
+val solrCellVersion = "7.5.0" // "7.4.0"
 val restletVersion = "2.4.0"
-val httpComponentsVersion = "4.5.5"
+val httpComponentsVersion = "4.5.6" // "4.5.5"
 val scalajHttpVersion = "2.4.1"
-val circeVersion = "0.9.3"
+val circeVersion = "0.10.0" // "0.9.3"
 val commonsIOVersion = "2.6"
-val airframeVersion = "0.52"
+val airframeVersion = "0.69" // "0.52"
 val hairyfotrVersion = "0.1.17"
 val scalaTestVersion = "3.0.5"
 
@@ -60,4 +60,3 @@ assemblyMergeStrategy in assembly := {
   case x => MergeStrategy.first
 }
 */
-

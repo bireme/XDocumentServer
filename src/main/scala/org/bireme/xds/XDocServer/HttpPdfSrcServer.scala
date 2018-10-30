@@ -8,13 +8,15 @@
 package org.bireme.xds.XDocServer
 
 import java.io.File
-import java.net.URL
 
 import io.vertx.core.http.HttpMethod
+import io.vertx.lang.scala.VertxExecutionContext
 import io.vertx.scala.core.eventbus.EventBus
 import io.vertx.scala.core.http.{HttpServer, HttpServerOptions, HttpServerRequest, HttpServerResponse}
 import io.vertx.scala.core.{DeploymentOptions, MultiMap, Vertx}
 import io.vertx.scala.ext.web.{Route, Router, RoutingContext}
+
+import scala.util.{Failure, Success}
 
 class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
                        pdfServerPort: Int = 9191) {
@@ -26,7 +28,10 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
   val router: Router = Router.router(vertx)
   val routePut: Route = router.route(HttpMethod.GET, "/pdfSrcServer/putDocument").handler(handlePutDocument)
   val routeDel: Route = router.route(HttpMethod.GET, "/pdfSrcServer/deleteDocument").handler(handleDeleteDocument)
+  val routeInfo: Route = router.route(HttpMethod.GET, "/pdfSrcServer/infoDocument").handler(handleInfoDocument)
   val myVerticle = new PdfSrcVerticle(pdfSrcServer)
+
+  implicit val executionContext: VertxExecutionContext = VertxExecutionContext(vertx.getOrCreateContext())
 
   vertx.deployVerticle(myVerticle, depOptions)
   server.requestHandler(router.accept _)
@@ -44,7 +49,7 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
 
     if (mapParams.get("id").isEmpty) {
       response.setStatusCode(400).end("Missing id parameter")
-    } else if (mapParams.get("url").isEmpty) {
+    } else if (mapParams.get("ur").isEmpty) {
         response.setStatusCode(400).end("Missing url parameter")
     } else {
       val par: String = Tools.map2String(mapParams)
@@ -70,11 +75,38 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
       response.setStatusCode(200).end("Deleting document")
     }
   }
+
+  private def handleInfoDocument(routingContext: RoutingContext): Unit = {
+    val request: HttpServerRequest = routingContext.request()
+    val response: HttpServerResponse = routingContext.response()
+      .putHeader("content-type", "application/json")
+    val params: MultiMap = request.params()
+    val mapParams: Map[String, Set[String]] = params.names().foldLeft(Map[String, Set[String]]()) {
+      case (map, name) => map + (name -> params.getAll(name).toSet)
+    }
+
+    val id = mapParams.get("id")
+    if (id.isEmpty) {
+      response.setStatusCode(400).end("Missing id parameter")
+    } else {
+      eventBus.sendFuture[String]("org.bireme.xds.XDocServer.info", id.get.head).onComplete {
+        case Success(result) =>
+          val str = result.body()
+          if (str.equals("**")) {
+            response.setStatusCode(500).end("""{"error_code":"500"}""")
+          } else {
+            response.setStatusCode(200).end(result.body())
+          }
+        case Failure(err) =>
+          response.setStatusCode(500).end(err.toString)
+      }
+    }
+  }
 }
 
 object HttpPdfSrcServer extends App {
   private def usage(): Unit = {
-    System.err.println("usage: HttpPdfSrcServer (-pdfDir=<dir>|-pdfDocServer=<url>) -solrColUrl=<url> [-serverPort=<port>]")
+    System.err.println("usage: HttpPdfSrcServer -pdfDir=<dir> -solrColUrl=<url> [-serverPort=<port>]")
     System.exit(1)
   }
 
@@ -92,20 +124,15 @@ object HttpPdfSrcServer extends App {
   }
 
   val pdfDir: Option[String] = parameters.get("pdfDir")
-  val pdfDocServer: Option[String] = parameters.get("pdfDocServer")
   val solrColUrl: Option[String] = parameters.get("solrColUrl")
   val serverPort: Int = parameters.getOrElse("serverPort", "9191").toInt
 
-  if (pdfDir.isEmpty && pdfDocServer.isEmpty) usage()
+  if (pdfDir.isEmpty) usage()
   if (solrColUrl.isEmpty) usage()
 
   val localPdfDocServer = new LocalPdfDocServer(new FSDocServer(new File(pdfDir.get)))
   val solrDocServer = new SolrDocServer(solrColUrl.get)
-  val localPdfSrcServer =
-    if (pdfDir.isDefined)
-      new LocalPdfSrcServer(solrDocServer, Right(new LocalPdfDocServer(new FSDocServer(new File(pdfDir.get)))))
-    else
-      new LocalPdfSrcServer(solrDocServer, Left(new URL(pdfDocServer.get)))
+  val localPdfSrcServer = new LocalPdfSrcServer(solrDocServer, new LocalPdfDocServer(new FSDocServer(new File(pdfDir.get))))
 
   new HttpPdfSrcServer(localPdfSrcServer, serverPort)
   System.in.read()

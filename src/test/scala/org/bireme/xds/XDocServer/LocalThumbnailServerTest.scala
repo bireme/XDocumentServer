@@ -1,3 +1,10 @@
+/*=========================================================================
+
+    XDocumentServer © Pan American Health Organization, 2018.
+    See License at: https://github.com/bireme/XDocumentServer/blob/master/LICENSE.txt
+
+  ==========================================================================*/
+
 package org.bireme.xds.XDocServer
 
 import java.io.File
@@ -8,11 +15,11 @@ import org.scalatest.FlatSpec
 class LocalThumbnailServerTest extends FlatSpec {
   // id(issn), url
   val parameters = Set(
-   // ("1677-7042", "http://pesquisa.in.gov.br/imprensa/jsp/visualiza/index.jsp?jornal=1&pagina=68&data=22/09/2017"),
-    ("978-85-334-1939-1", "http://189.28.128.100/dab/docs/publicacoes/geral/pnab.pdf"),
-    ("978-85-334-1911-7", "http://bvsms.saude.gov.br/bvs/publicacoes/politica_nacional_alimentacao_nutricao.pdf"),
-    ("78-85-334-2146-2", "http://bvsms.saude.gov.br/bvs/publicacoes/politica_nacional_praticas_integrativas_complementares_2ed.pdf"),
-    ("no_issn", "http://189.28.128.100/dab/docs/publicacoes/geral/diretrizes_da_politica_nacional_de_saude_bucal.pdf")
+    ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf"),
+    ("2", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf"),
+    ("3", "http://www.escoladesaude.pr.gov.br/arquivos/File/TEXTOS_CURSO_VIGILANCIA/capacitacao_e_atualizacao_em_geoprocessamento_em_saude_3.pdf"),
+    ("4", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf"),
+    ("5", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf")
   )
 
   val pdir = new File("pdfs2")

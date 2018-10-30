@@ -76,19 +76,21 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
     val now: Date = Calendar.getInstance().getTime
     val dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss")
     val date: String = dateFormat.format(now)
+    val infoT: Option[Map[String, Seq[String]]] =
+      info.map(_.map(kv => kv._1.trim() -> kv._2.map(_.replace("\n", " ").trim()) ))
     val map = Map(
       "id" -> Seq(id),
-      "date" -> Seq(date)) ++ info.getOrElse(Map[String, Seq[String]]())
+      "date" -> Seq(date)) ++ infoT.getOrElse(Map[String, Seq[String]]())
 
     Try {
       if (source.isEmpty) throw new NullPointerException()
       val pddoc: PDDocument = PDDocument.load(source.get)
-      val info: PDDocumentInformation = pddoc.getDocumentInformation
+      val info2: PDDocumentInformation = pddoc.getDocumentInformation
       val map2: Map[String, Seq[String]] = Map(
-        "title" -> (if (info.getTitle == null) null else Seq(info.getTitle)),
-        "subject" -> (if (info.getSubject == null) null else Seq(info.getSubject)),
-        "authors" -> (if (info.getAuthor == null) null else Seq(info.getAuthor)),
-        "keywords" -> (if (info.getKeywords == null) null else Seq(info.getKeywords))
+        "title" -> (if (info2.getTitle == null) null else Seq(info2.getTitle)),
+        "subject" -> (if (info2.getSubject == null) null else Seq(info2.getSubject)),
+        "authors" -> (if (info2.getAuthor == null) null else Seq(info2.getAuthor)),
+        "keywords" -> (if (info2.getKeywords == null) null else Seq(info2.getKeywords))
       ).filter { case (_, v) => v != null }
 
       pddoc.close()

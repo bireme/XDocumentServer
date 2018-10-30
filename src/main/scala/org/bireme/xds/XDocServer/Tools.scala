@@ -7,14 +7,13 @@
 
 package org.bireme.xds.XDocServer
 
-import java.io.{File, InputStream}
+import java.io.{ByteArrayOutputStream, File, InputStream}
 import java.net.{URL, URLConnection}
 import java.text.Normalizer
 import java.text.Normalizer.Form
 
 import scalaj.http.Http
 
-import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
 object Tools {
@@ -29,18 +28,19 @@ object Tools {
 
   def inputStream2Array(is: InputStream): Option[Array[Byte]] = {
     Try {
+      val bos = new ByteArrayOutputStream()
+      val buffer = Array.ofDim[Byte](2048)
       var continue = true
-      val aux = Array.ofDim[Byte](1024*1024)
-      val buffer = mutable.Buffer[Byte]()
 
       while (continue) {
-        val read = is.read(aux)
-        if (read == -1) continue = false
-        else buffer ++= aux.take(read)
+        val length = is.read(buffer)
+        if (length >= 0)
+          bos.write(buffer, 0, length)
+        else continue = false
       }
 
-      is.close()
-      Some(buffer.toArray)
+      bos.close()
+      Some(bos.toByteArray)
     } match {
       case Success(array) => array
       case Failure(_) => None
@@ -48,11 +48,12 @@ object Tools {
   }
 
   def url2InputStream(url: URL): Option[InputStream] = {
+    val timeout = 4 * 60 * 1000
 
     Try {
       val conn: URLConnection = url.openConnection()
 
-      conn.setConnectTimeout(4 * 60 * 1000)
+      conn.setConnectTimeout(timeout)
       conn.getInputStream
     } match {
       case Success(is) => Some(is)
