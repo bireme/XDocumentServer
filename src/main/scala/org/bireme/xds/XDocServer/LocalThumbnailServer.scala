@@ -24,8 +24,18 @@ class LocalThumbnailServer(docServer: DocumentServer,
                               source: InputStream,
                               info: Option[Map[String, Seq[String]]] = None): Int = {
     myPDFToImage.convert(source) match {
+      case Some(is) =>
+        info match {
+          case Some(_) => super.createDocument(id, is, info)
+          case None =>
+            if (is.markSupported()) {
+              is.mark(Integer.MAX_VALUE)
+              val info2 = createDocumentInfo(id, Some(is))
+              is.reset()
+              super.createDocument(id, is, Some(info2))
+            } else super.createDocument(id, is, Some(createDocumentInfo(id, None)))
+        }
       case None => 500
-      case Some(is) => super.createDocument(id, is, Some(info.getOrElse(createDocumentInfo(id, Some(source)))))
     }
   }
 
@@ -40,7 +50,19 @@ class LocalThumbnailServer(docServer: DocumentServer,
                               url: String,
                               info: Option[Map[String, Seq[String]]]): Int = {
     Tools.url2InputStream(new URL(url)) match {
-      case Some(is) => createDocument(id, is, info.map(_ + ("url" -> Seq(url))))
+      case Some(is) =>
+        info match {
+          case Some(_) => super.createDocument(id, is, info.map(_ + ("url" -> Seq(url))))
+          case None =>
+            if (is.markSupported()) {
+              is.mark(Integer.MAX_VALUE)
+              val info2 = createDocumentInfo(id, Some(is))
+              is.reset()
+              super.createDocument(id, is, Some(info2))
+            } else {
+              super.createDocument(id, is, Some(createDocumentInfo(id, None, Some(Map("url" -> Seq(url))))))
+            }
+        }
       case None => 500
     }
   }

@@ -26,6 +26,7 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
   var server: HttpServer = vertx.createHttpServer(options)
   val router: Router = Router.router(vertx)
   val routeGet: Route = router.route(HttpMethod.GET, "/thumbnailServer/getDocument").blockingHandler(handleGetDocument)
+  val routeGetRest: Route = router.route(HttpMethod.GET, "/thumbnailServer/getDocument/:id").blockingHandler(handleGetDocumentRest)
   val routeDelete: Route = router.route(HttpMethod.GET, "/thumbnailServer/deleteDocument").blockingHandler(handleDeleteDocument)
   server.requestHandler(router.accept _)
   server.listen()
@@ -46,7 +47,51 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
       localThumbnailServer.getDocument(id.get, url) match {
         case Right(is) =>
           writeOutput(is, response) match {
-            case Success(_) => response.putHeader("content-type", "image/jpeg").setStatusCode(200).end()
+            case Success(_) => response.putHeader("Cache-Control", "public").
+              putHeader("content-type", "image/jpeg").setStatusCode(200).end()
+            case Failure(_) => response.setStatusCode(500).end("Error code: 500")
+          }
+        case Left(err) => response.setStatusCode(err).end(s"Error code: $err")
+      }
+    }
+  }
+
+  private def handleGetDocumentRest(routingContext: RoutingContext): Unit = {
+    val request: HttpServerRequest = routingContext.request()
+    val response: HttpServerResponse = routingContext.response().putHeader("content-type", "text/plain")
+    val id: Option[String] = request.getParam("id")
+
+    if (id.isEmpty) {
+      response.setStatusCode(400).end("Missing id parameter")
+    } else {
+      //response.setChunked(true)
+      //Pump.pump(request, response).start()
+
+      val headers = request.headers()
+      headers.names.foreach {
+        name => println(s"key=$name values=${headers.getAll(name)}")
+      }
+
+      localThumbnailServer.getDocument(id.get, None) match {
+        case Right(is) =>
+          Try {
+            val arr: Array[Byte] = Tools.inputStream2Array(is).get
+            //response.putHeader("Cache-Control", "public").
+            response.
+              putHeader("Date", "Tue, 07 Nov 2018 11:23:26 GMT").
+              putHeader("Server", "Apache/2.2.13 (Red Hat)").
+              putHeader("Last-Modified:", "Mon, 20 Aug 2018 20:43:26 GMT").
+              putHeader("ETag", "\"7b41a7-c574-573e3f6075780\"").
+              putHeader("Accept-Ranges", "bytes").
+              putHeader("Content-Length", arr.length.toString).
+              putHeader("Vary", "User-Agent").
+              putHeader("Keep-Alive", "timeout=5, max=100").
+              putHeader("Connection", "Keep-Alive").
+              putHeader("Content-Type", "image/jpeg")
+
+            response.write(Buffer.buffer(arr))
+          } match {
+            case Success(_) => response.setStatusCode(304).end()
             case Failure(_) => response.setStatusCode(500).end("Error code: 500")
           }
         case Left(err) => response.setStatusCode(err).end(s"Error code: $err")
@@ -55,7 +100,7 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
   }
 
   private def writeOutput(in: InputStream,
-                          out: HttpServerResponse) : Try[Unit] = {
+                          out: HttpServerResponse): Try[Unit] = {
     Try {
       val arr: Array[Byte] = Tools.inputStream2Array(in).get
       out.write(Buffer.buffer(arr))

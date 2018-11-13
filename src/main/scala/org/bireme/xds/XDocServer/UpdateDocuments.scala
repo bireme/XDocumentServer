@@ -548,7 +548,7 @@ object UpdateDocuments extends App {
   val communities = parameters.get("communities").map(_.trim.split(" *\\, *"))
   val fromDate = parameters.get("fromDate").map(_.trim)
   val reset = parameters.contains("reset")
-  val date = "(19[789]|20[01])[0-9]\\-(0[1-9]|1[012])\\-[01][0-9]"
+  val date = "(19[789]|20[01])[0-9]\\-(0[1-9]|1[012])\\-(0[1-9]|[1-2][0-9]|3[0-1])"
   val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, thumbServUrl)
 
   fromDate.foreach(fdate => if (!fdate.matches(date)) usage())
