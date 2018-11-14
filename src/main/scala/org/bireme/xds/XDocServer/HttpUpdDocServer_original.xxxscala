@@ -6,11 +6,8 @@
   ==========================================================================*/
 
 package org.bireme.xds.XDocServer
-
 import io.vertx.core.http.HttpMethod
-import io.vertx.lang.scala.VertxExecutionContext
-import io.vertx.scala.core.{DeploymentOptions, Vertx}
-import io.vertx.scala.core.eventbus.EventBus
+import io.vertx.scala.core.Vertx
 import io.vertx.scala.core.http.{HttpServer, HttpServerOptions, HttpServerRequest, HttpServerResponse}
 import io.vertx.scala.ext.web.{Route, Router, RoutingContext}
 
@@ -21,15 +18,9 @@ class HttpUpdDocServer(updServerPort: Int = 9393,
   val vertx: Vertx = Vertx.vertx()
   val options: HttpServerOptions = HttpServerOptions().setPort(updServerPort).setLogActivity(true)
   val server: HttpServer = vertx.createHttpServer(options)
-  val depOptions: DeploymentOptions = DeploymentOptions().setWorker(true)
-  val eventBus: EventBus = vertx.eventBus()
   val router: Router = Router.router(vertx)
-  val routeGet: Route = router.route(HttpMethod.GET, "/updDocServer/updDocument").blockingHandler(handleGetDocument)
-  val myVerticle = new PdfUpdVerticle(pdfDocDir, solrColUrl, thumbDir)
+  val routeGet: Route = router.route(HttpMethod.GET, "/addDocServer/updDocument").blockingHandler(handleGetDocument)
 
-  implicit val executionContext: VertxExecutionContext = VertxExecutionContext(vertx.getOrCreateContext())
-
-  vertx.deployVerticle(myVerticle, depOptions)
   server.requestHandler(router.accept _)
   server.listen()
   println(s"HttpUpdDocServer is listening port: $updServerPort")
@@ -42,8 +33,10 @@ class HttpUpdDocServer(updServerPort: Int = 9393,
     if (id.isEmpty) {
       response.setStatusCode(400).end("Missing id parameter")
     } else {
-      eventBus.publish("org.bireme.xds.UpdateDocuments.upd", id)
-      response.setStatusCode(200).end("Updating document")
+      val updDocs = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, None)
+      if (updDocs.updateOne(id.get)) {
+        response.putHeader("content-type", "text/plain").setStatusCode(201).end("Document (created|updated)")
+      } else response.setStatusCode(500).end("Error code: 500")
     }
   }
 }

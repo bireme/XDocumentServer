@@ -138,9 +138,9 @@ class UpdateDocuments(pdfDocDir: String,
     }
 
     commIds.foldLeft(Seq[Map[String,Seq[String]]]()) {
-      case (_, cid) => getCollectionIds(cid) match {
+      case (seq1, cid) => getCollectionIds(cid) match {
         case Some(ids) =>
-          ids.foldLeft(Seq[Map[String, Seq[String]]]()) {
+          ids.foldLeft(seq1) {
             case (seq2, id) =>
               //println(s"+++ parsing metadata community:$cid collection:$id")
               seq2 ++ getMetadata(cid, id, fromDateStr)
@@ -212,9 +212,9 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def getMetadata(comId: String,
-                         colId: String,
-                         elem: ACursor,
-                         seq: Seq[Map[String,Seq[String]]]): Seq[Map[String,Seq[String]]] = {
+                          colId: String,
+                          elem: ACursor,
+                          seq: Seq[Map[String,Seq[String]]]): Seq[Map[String,Seq[String]]] = {
     if (elem.succeeded) {
       val aux = seq :+ getMetadata(comId, colId, elem)
       getMetadata(comId, colId, elem.right, aux)

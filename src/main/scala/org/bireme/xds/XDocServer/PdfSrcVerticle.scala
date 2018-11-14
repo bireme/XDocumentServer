@@ -39,7 +39,7 @@ class PdfSrcVerticle(pdfSrcServer: LocalPdfSrcServer) extends ScalaVerticle with
             }
           }
         } match {
-          case scala.util.Success(value) => ()
+          case scala.util.Success(_) => ()
           case scala.util.Failure(exception) => error(exception.getMessage)
         }
       }
