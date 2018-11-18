@@ -26,16 +26,22 @@ object Tools {
     s2.replaceAll("[^\\w\\-]", "")  // Hifen
   }
 
-  def inputStream2Array(is: InputStream): Option[Array[Byte]] = {
+  /**
+    * Convert an input stream into a byte array
+    * @param is the input stream to be converted
+    * @return an output byte array
+    */
+   def inputStream2Array(is: InputStream): Option[Array[Byte]] = {
     Try {
       val bos = new ByteArrayOutputStream()
       val buffer = Array.ofDim[Byte](2048)
       var continue = true
 
       while (continue) {
-        val length = is.read(buffer)
-        if (length >= 0)
-          bos.write(buffer, 0, length)
+        val read = is.read(buffer)
+  println(s"inputStream2Array read=$read")
+        if (read >= 0)
+          bos.write(buffer, 0, read)
         else continue = false
       }
 
@@ -54,6 +60,7 @@ object Tools {
       val conn: URLConnection = url.openConnection()
 
       conn.setConnectTimeout(timeout)
+      conn.setReadTimeout(timeout)
       conn.getInputStream
     } match {
       case Success(is) => Some(is)

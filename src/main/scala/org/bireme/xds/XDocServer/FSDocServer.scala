@@ -18,7 +18,7 @@ import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
 
 class FSDocServer(rootDir: File) extends DocumentServer {
-  // Create the root directory if it does not exist
+  // Create the root  directoryif it does not exist
   Tools.createDirectory(rootDir)
 
   /**
@@ -70,12 +70,10 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     else {
       Try {
         if (!dir.exists()) dir.mkdir()
-
-        new FileOutputStream(file)
+        if (writeDocument(source, file, buffer)) writeDocInfo(infoFile, info.getOrElse(createDocumentInfo(idT)))
+        else 500
       } match {
-        case Success(fos) =>
-          if (writeDocument(source, fos, buffer)) writeDocInfo(infoFile, info.getOrElse(createDocumentInfo(idT)))
-          else 500
+        case Success(ret: Int) => ret
         case Failure(_) => 500
       }
     }
@@ -133,7 +131,9 @@ class FSDocServer(rootDir: File) extends DocumentServer {
                                info: Option[Map[String, Seq[String]]] = None): Int = {
     deleteDocument(id) match {
       case 500 => 500
-      case _ => createDocument(id, source, info); 200
+      case _ =>
+        createDocument(id, source, info)
+        200
     }
   }
 
@@ -149,7 +149,9 @@ class FSDocServer(rootDir: File) extends DocumentServer {
                       info: Option[Map[String, Seq[String]]]): Int = {
     deleteDocument(id) match {
       case 500 => 500
-      case _ => createDocument(id, url, info); 200
+      case _ =>
+        createDocument(id, url, info)
+        200
     }
   }
 
@@ -255,17 +257,18 @@ class FSDocServer(rootDir: File) extends DocumentServer {
   }
 
   private def writeDocument(is: InputStream,
-                            os: OutputStream,
+                            file: File,
                             buffer: Array[Byte]): Boolean = {
     var continue = true
 
     Try {
+      val os: OutputStream = new FileOutputStream(file)
       while (continue) {
         val read: Int = is.read(buffer)
-        if (read == -1) continue = false
-        else os.write(buffer, 0, read)
+println(s"writeDocument read=$read")
+        if (read >= 0) os.write(buffer, 0, read)
+        else continue = false
       }
-      is.close()
       os.close()
     } match {
       case Success(_) => true

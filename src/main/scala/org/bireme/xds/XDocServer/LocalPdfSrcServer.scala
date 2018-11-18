@@ -37,28 +37,31 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
     * @return the original metadata document content if it is found or 404(not found) or 500(internal server error)
     */
   def getDocument2(id: String): Either[Int, Map[String,Set[String]]] = {
-    solrDocServer.getDocument(id).flatMap { is =>
-      Tools.inputStream2Array(is) match {
-        case Some(array) =>
-          val str = new String(array, Charset.forName("utf-8"))
-          val json: Json = parse(str).getOrElse(Json.Null)
-          val cursor: HCursor = json.hcursor
-          val docs: ACursor = cursor.downField("response").downField("docs")
-          if (docs.failed) Left(404)
-          else {
-            val doc: ACursor = docs.downArray.first
-            Right(doc.keys.get.map(key => (key,cursor.downField(key))).foldLeft(Map[String, Set[String]]()) {
-              case (map, (key, acursor)) => acursor.focus match {
-                case Some(json2) =>
-                  val set = map.getOrElse(key, Set[String]())
-                  if (json2.isArray) map + (key -> (set + json2.asArray.get.head.toString))
-                  else map + (key -> (set + json2.toString))
-                case None => map
-              }
-            })
-          }
-        case None => Left(500)
-      }
+    solrDocServer.getDocument(id).flatMap {
+      is: InputStream =>
+        val ret: Either[Int, Map[String, Set[String]]] = Tools.inputStream2Array(is) match {
+          case Some(array) =>
+            val str = new String(array, Charset.forName("utf-8"))
+            val json: Json = parse(str).getOrElse(Json.Null)
+            val cursor: HCursor = json.hcursor
+            val docs: ACursor = cursor.downField("response").downField("docs")
+            if (docs.failed) Left(404)
+            else {
+              val doc: ACursor = docs.downArray.first
+              Right(doc.keys.get.map(key => (key,cursor.downField(key))).foldLeft(Map[String, Set[String]]()) {
+                case (map, (key, acursor)) => acursor.focus match {
+                  case Some(json2) =>
+                    val set = map.getOrElse(key, Set[String]())
+                    if (json2.isArray) map + (key -> (set + json2.asArray.get.head.toString))
+                    else map + (key -> (set + json2.toString))
+                  case None => map
+                }
+              })
+            }
+          case None => Left(500)
+        }
+        is.close()
+        ret
     }
   }
 
@@ -79,12 +82,15 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
           pdfDocServer.createDocument(id, url, info.map(_ + ("url" -> Seq(url)))) match {
             case 201 =>
               pdfDocServer.getDocument(id) match {
-                case Right(is) =>
+                case Right(is: InputStream) =>
                   val is2 = new ByteArrayInputStream(Tools.inputStream2Array(is).get)
                   is2.mark(Integer.MAX_VALUE)
                   val info2 = Some(createDocumentInfo(id, Some(is2), info) + ("url" -> Seq(url)))
                   is2.reset()
-                  solrDocServer.createDocument(id, is2, info2)
+                  val ret: Int = solrDocServer.createDocument(id, is2, info2)
+                  is2.close()
+                  is.close()
+                  ret
                 case Left(err2) => err2
               }
             case err3 => err3
@@ -116,7 +122,10 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
                   is2.mark(Integer.MAX_VALUE)
                   val info2 = Some(createDocumentInfo(id, Some(is2), info))
                   is2.reset()
-                  solrDocServer.createDocument(id, is2, info2)
+                  val ret = solrDocServer.createDocument(id, is2, info2)
+                  is2.close()
+                  is.close()
+                  ret
                 case Left(err2) => err2
               }
             case err3 => err3
