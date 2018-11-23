@@ -131,9 +131,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
                                info: Option[Map[String, Seq[String]]] = None): Int = {
     deleteDocument(id) match {
       case 500 => 500
-      case _ =>
-        createDocument(id, source, info)
-        200
+      case _ => createDocument(id, source, info)
     }
   }
 
@@ -144,9 +142,9 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     * @param info metadata of the document
     * @return a http error code. 201(created) if new , 200(ok) if replaced or 500 (internal server error)
     */
-  def replaceDocument(id: String,
-                      url: String,
-                      info: Option[Map[String, Seq[String]]]): Int = {
+  override def replaceDocument(id: String,
+                               url: String,
+                               info: Option[Map[String, Seq[String]]]): Int = {
     deleteDocument(id) match {
       case 500 => 500
       case _ =>
@@ -265,7 +263,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
       val os: OutputStream = new FileOutputStream(file)
       while (continue) {
         val read: Int = is.read(buffer)
-println(s"writeDocument read=$read")
+//println(s"writeDocument read=$read")
         if (read >= 0) os.write(buffer, 0, read)
         else continue = false
       }

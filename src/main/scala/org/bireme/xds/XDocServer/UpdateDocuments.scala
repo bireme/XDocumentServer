@@ -142,7 +142,7 @@ class UpdateDocuments(pdfDocDir: String,
         case Some(ids) =>
           ids.foldLeft(seq1) {
             case (seq2, id) =>
-              //println(s"+++ parsing metadata community:$cid collection:$id")
+              //println(s"***+++ parsing metadata community:$cid collection:$id")
               seq2 ++ getMetadata(cid, id, fromDateStr)
           }
         case None => Seq[Map[String, Seq[String]]]()

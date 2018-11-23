@@ -115,6 +115,38 @@ class LocalThumbnailServer(docServer: DocumentServer,
   }
 
   /**
+    * Replace a stored document if there is some or create a new one otherwise
+    * @param id document identifier
+    * @param source the source of the document content
+    * @param info metainfo of the document
+    * @return a http error code. 201(created) if new , 200(ok) if replaced or 500 (internal server error)
+    */
+  override def replaceDocument(id: String,
+                               source: InputStream,
+                               info: Option[Map[String, Seq[String]]] = None): Int = {
+    deleteDocument(id) match {
+      case 500 => 500
+      case _ => createDocument(id, source, info)
+    }
+  }
+
+  /**
+    * Replace a stored document if there is some or create a new one otherwise
+    * @param id document identifier
+    * @param url the location where the document is
+    * @param info metadata of the document
+    * @return a http error code. 201(created) if new , 200(ok) if replaced or 500 (internal server error)
+    */
+  override def replaceDocument(id: String,
+                               url: String,
+                               info: Option[Map[String, Seq[String]]]): Int = {
+    deleteDocument(id) match {
+      case 500 => 500
+      case _ => createDocument(id, url, info)
+    }
+  }
+
+  /**
     * Retrieve a stored pdf document
     * @param id document identifier
     * @param url the location where the document is

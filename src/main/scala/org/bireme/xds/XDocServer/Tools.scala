@@ -39,7 +39,7 @@ object Tools {
 
       while (continue) {
         val read = is.read(buffer)
-  println(s"inputStream2Array read=$read")
+  //println(s"inputStream2Array read=$read")
         if (read >= 0)
           bos.write(buffer, 0, read)
         else continue = false
@@ -75,7 +75,9 @@ object Tools {
 
     Try(Http(url.toString).timeout(timeout, timeout).asBytes) match {
       case Success(response) =>
-        if (response.is2xx) Some(response.body)
+        val arr: Array[Byte] = response.body
+//println(s"url2ByteArray read=${arr.length} bytes")
+        if (response.is2xx) Some(arr)
         else None
       case Failure(_) => None
     }

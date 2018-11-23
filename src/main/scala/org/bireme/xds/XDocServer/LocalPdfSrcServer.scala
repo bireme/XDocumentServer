@@ -146,7 +146,11 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
                                info: Option[Map[String, Seq[String]]] = None): Int = {
     pdfDocServer.replaceDocument(id, source, info) match {
       case 500 => 500
-      case _ => solrDocServer.replaceDocument(id, source, info)
+      case _ =>
+        if (source.markSupported()) {
+          source.reset()
+          solrDocServer.replaceDocument(id, source, info)
+        } else 500
     }
   }
 
