@@ -53,18 +53,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
                               info: Option[Map[String, Seq[String]]]): Int = {
     Tools.url2InputStream(new URL(url)) match {
       case Some(is) =>
-        val ret: Int = info match {
-          case Some(_) => super.createDocument(id, is, info.map(_ + ("url" -> Seq(url))))
-          case None =>
-            if (is.markSupported()) {
-              is.mark(Integer.MAX_VALUE)
-              val info2 = createDocumentInfo(id, Some(is))
-              is.reset()
-              super.createDocument(id, is, Some(info2))
-            } else {
-              super.createDocument(id, is, Some(createDocumentInfo(id, None, Some(Map("url" -> Seq(url))))))
-            }
-        }
+        val ret = createDocument(id, is, info)
         is.close()
         ret
       case None => 500
