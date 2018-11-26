@@ -12,8 +12,6 @@ import java.net.{URL, URLConnection}
 import java.text.Normalizer
 import java.text.Normalizer.Form
 
-import scalaj.http.Http
-
 import scala.util.{Failure, Success, Try}
 
 object Tools {
@@ -57,11 +55,16 @@ object Tools {
     val timeout = 4 * 60 * 1000
 
     Try {
-      val conn: URLConnection = url.openConnection()
+      url.getProtocol match {
+        case "http" | "https" =>
+          val conn: URLConnection = url.openConnection()
 
-      conn.setConnectTimeout(timeout)
-      conn.setReadTimeout(timeout)
-      conn.getInputStream
+          conn.setConnectTimeout(timeout)
+          conn.setReadTimeout(timeout)
+          conn.getInputStream
+        case "ftp" => url.openStream()
+        case _ => throw new IllegalArgumentException("protocol")
+      }
     } match {
       case Success(is) => Some(is)
       case Failure(_) =>
@@ -71,16 +74,21 @@ object Tools {
   }
 
   def url2ByteArray(url: URL): Option[Array[Byte]] = {
-    val timeout = 4 * 60 * 1000
+    url2InputStream(url).flatMap {
+      is =>
+        val arr: Option[Array[Byte]] = inputStream2Array(is)
+        is.close()
+        arr
+    }
+    /*val timeout = 4 * 60 * 1000
 
     Try(Http(url.toString).timeout(timeout, timeout).asBytes) match {
       case Success(response) =>
         val arr: Array[Byte] = response.body
-//println(s"url2ByteArray read=${arr.length} bytes")
         if (response.is2xx) Some(arr)
         else None
       case Failure(_) => None
-    }
+    }*/
   }
 
   def createDirectory(directoryToBeCreated: File): Boolean =

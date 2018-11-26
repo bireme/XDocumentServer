@@ -18,7 +18,7 @@ import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
 
 class FSDocServer(rootDir: File) extends DocumentServer {
-  // Create the root  directoryif it does not exist
+  // Create the root  directory if it does not exist
   Tools.createDirectory(rootDir)
 
   /**
