@@ -26,6 +26,7 @@ class UpdateDocuments(pdfDocDir: String,
 
   def addAll(communities: Option[Array[String]],
              fromDate: Option[String],
+             onlyMissing: Boolean,
              reset: Boolean): Unit = {
     if (solrColUrl.isEmpty) println("!!! Solr url collection is missing. Pdf files will not be indexed!")
     if (thumbDir.isEmpty) println("!!! Thumbnail server url is missing. Pdf thumbnail files will not be stored!")
@@ -49,7 +50,9 @@ class UpdateDocuments(pdfDocDir: String,
     }
 
     if (solrColUrl.isDefined || thumbDir.isDefined) {
-      getMetadata(communities, fromDate) foreach {
+      val storedIds = if (onlyMissing) getStoredIds(lpss, lts) else Set[String]()
+
+      getMetadata(communities, fromDate, storedIds) foreach {
         meta =>
           val id: Option[Seq[String]] = meta.get("id")
           val url: Option[Seq[String]] = meta.get("ur")
@@ -126,8 +129,20 @@ class UpdateDocuments(pdfDocDir: String,
     }
   }
 
+  private def getStoredIds(lpss: Option[LocalPdfSrcServer],
+                           lts: Option[LocalThumbnailServer]): Set[String] = {
+    if (lpss.isDefined) {
+      if (lts.isDefined) lpss.get.getDocuments.intersect(lts.get.getDocuments)
+      else lpss.get.getDocuments
+    } else {
+      if (lts.isDefined) lts.get.getDocuments
+      else Set[String]()
+    }
+  }
+
   private def getMetadata(communities: Option[Array[String]],
-                          fromDate: Option[String]): Seq[Map[String,Seq[String]]] = {
+                          fromDate: Option[String],
+                          storedIds: Set[String]): Seq[Map[String,Seq[String]]] = {
     val commIds: Set[String] = communities match {
       case Some(cIds: Array[String]) => Set[String]() ++ cIds
       case None => getCommunityIds.getOrElse(Set[String]())
@@ -143,7 +158,7 @@ class UpdateDocuments(pdfDocDir: String,
           ids.foldLeft(seq1) {
             case (seq2, id) =>
               //println(s"***+++ parsing metadata community:$cid collection:$id")
-              seq2 ++ getMetadata(cid, id, fromDateStr)
+              seq2 ++ getMetadata(cid, id, fromDateStr, storedIds)
           }
         case None => Seq[Map[String, Seq[String]]]()
       }
@@ -152,7 +167,8 @@ class UpdateDocuments(pdfDocDir: String,
 
   private def getMetadata(comId: String,
                           colId: String,
-                          fromDate: String): Seq[Map[String,Seq[String]]] = {
+                          fromDate: String,
+                          storedIds: Set[String]): Seq[Map[String,Seq[String]]] = {
     Try {
       val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&status=1&limit=0&format=json$fromDate", "utf-8")
       val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
@@ -161,7 +177,7 @@ class UpdateDocuments(pdfDocDir: String,
     } match {
       case Success(json) => json match {
         case Right(js: Json) => getMetadata(comId, colId,
-          js.hcursor.downField("objects").downArray.first, Seq[Map[String,Seq[String]]]())
+          js.hcursor.downField("objects").downArray.first, storedIds, Seq[Map[String,Seq[String]]]())
         case Left(_) => Seq[Map[String,Seq[String]]]()
       }
       case Failure(_) => Seq[Map[String,Seq[String]]]()
@@ -214,41 +230,49 @@ class UpdateDocuments(pdfDocDir: String,
   private def getMetadata(comId: String,
                           colId: String,
                           elem: ACursor,
+                          storedIds: Set[String],
                           seq: Seq[Map[String,Seq[String]]]): Seq[Map[String,Seq[String]]] = {
     if (elem.succeeded) {
-      val aux = seq :+ getMetadata(comId, colId, elem)
-      getMetadata(comId, colId, elem.right, aux)
+      val aux = seq :+ getMetadata(comId, colId, elem, storedIds)
+      getMetadata(comId, colId, elem.right, storedIds, aux)
     } else seq
   }
 
   private def getMetadata(comId: String,
                           colId: String,
-                          elem: ACursor): Map[String,Seq[String]] = {
+                          elem: ACursor,
+                          storedIds: Set[String]): Map[String,Seq[String]] = {
     val docId: Seq[String] = parseId(elem)
-    val url: Seq[String] = parseDocUrl(elem)
-    val comId2: Seq[String] = parseCommunity(elem)
-    val colId2: Seq[String] = parseCollection(elem)
 
-    println(s"+++ parsing metadata - community:$comId collection:$colId document:${docId.head}")
+    if (docId.isEmpty || storedIds.contains(docId.head)) Map[String,Seq[String]]()
+    else {
+      val url: Seq[String] = parseDocUrl(elem)
+      val comId2: Seq[String] = parseCommunity(elem)
+      val colId2: Seq[String] = parseCollection(elem)
 
-    val map: Map[String, Seq[String]] = Map(
-      "id" -> docId,
-      "ti" -> parseTitle(elem),
-      "type" -> parseDocType(elem),
-      "au" -> parseAuthor(elem),
-      "da" -> parseYear(elem),
-      "kw" -> parseKeyword(elem),
-      "fo" -> parseSource(elem),
-      "ab" -> parseAbstr(elem),
-      "ur" -> url,
-      "la" -> parseLanguage(elem),
-      "mh" -> parseDescriptor(elem),
-      "com" -> comId2,
-      "col" -> colId2,
-      "ud" -> parseUpdDate(elem),
-      "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
-    )
-    map.filterNot(kv => kv._2.isEmpty)
+      println(
+        s"+++ parsing metadata - community:$comId collection:$colId document:${docId.head}"
+      )
+
+      val map: Map[String, Seq[String]] = Map(
+        "id" -> docId,
+        "ti" -> parseTitle(elem),
+        "type" -> parseDocType(elem),
+        "au" -> parseAuthor(elem),
+        "da" -> parseYear(elem),
+        "kw" -> parseKeyword(elem),
+        "fo" -> parseSource(elem),
+        "ab" -> parseAbstr(elem),
+        "ur" -> url,
+        "la" -> parseLanguage(elem),
+        "mh" -> parseDescriptor(elem),
+        "com" -> comId2,
+        "col" -> colId2,
+        "ud" -> parseUpdDate(elem),
+        "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
+      )
+      map.filterNot(kv => kv._2.isEmpty)
+    }
   }
 
   private def getCommunityIds: Option[Set[String]] = {
@@ -518,7 +542,8 @@ object UpdateDocuments extends App {
         "\n\t[-communities=com1,com2,..,comN] - communities used to filter documents to generate de pdf/thumbnail files" +
         "\n\t[-fromDate=YYYY-MM-DD] - initial date used to filter documents to generate de pdf/thumbnail files" +
         "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
-        "\n\t[--reset] - if present, will create empty collections to store pdf/thumbnail files"
+        "\n\t[--reset] - if present, will create empty collections to store pdf/thumbnail files" +
+        "\n\t[--onlyMissing] - if present, will create pdf/thumbnail files only if they were not already created"
     )
     System.exit(1)
   }
@@ -548,6 +573,7 @@ object UpdateDocuments extends App {
   val communities = parameters.get("communities").map(_.trim.split(" *\\, *"))
   val fromDate = parameters.get("fromDate").map(_.trim)
   val reset = parameters.contains("reset")
+  val onlyMissing = parameters.contains("onlyMissing")
   val date = "(19[789]|20[01])[0-9]\\-(0[1-9]|1[012])\\-(0[1-9]|[1-2][0-9]|3[0-1])"
   val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, thumbServUrl)
 
@@ -557,6 +583,6 @@ object UpdateDocuments extends App {
     case Some(did) =>
       updDocuments.updateOne(did)
     case None =>
-      updDocuments.addAll(communities, fromDate, reset)
+      updDocuments.addAll(communities, fromDate, onlyMissing, reset)
   }
 }
