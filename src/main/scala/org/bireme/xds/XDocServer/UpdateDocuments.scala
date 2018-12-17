@@ -8,7 +8,6 @@
 package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayInputStream, File}
-import java.net.URL
 
 import io.circe._
 import io.circe.parser._
@@ -109,7 +108,7 @@ class UpdateDocuments(pdfDocDir: String,
 
         if (id.isEmpty || url.isEmpty) false
         else {
-          Tools.url2ByteArray(new URL(urlStr)).exists {
+          Tools.url2ByteArray(urlStr).exists {
             arr =>
               val bais = new ByteArrayInputStream(arr)
               bais.mark(Integer.MAX_VALUE)
@@ -120,7 +119,8 @@ class UpdateDocuments(pdfDocDir: String,
                       val b1: Boolean = pss.replaceDocument(idStr, bais, Some(meta)) != 500
                       bais.reset()
                       b1 && lts.forall(_.replaceDocument(idStr, bais, None) != 500) // LocalThumbnailServer
-                    case None => lpds.replaceDocument(idStr, new URL(urlStr).openStream(), None) != 500 // LocalPdfDocServer
+                    //case None => lpds.replaceDocument(idStr, new URL(urlStr).openStream(), None) != 500 // LocalPdfDocServer
+                    case None => lpds.replaceDocument(idStr, bais, None) != 500 // LocalPdfDocServer
                   }
                 }.isSuccess
               } else lpds.replaceDocument(idStr, bais, None) != 500 // LocalPdfDocServer

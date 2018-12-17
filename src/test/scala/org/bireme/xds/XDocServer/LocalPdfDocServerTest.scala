@@ -8,7 +8,6 @@
 package org.bireme.xds.XDocServer
 
 import java.io.File
-import java.net.URL
 import java.util
 
 import org.scalatest.FlatSpec
@@ -35,7 +34,7 @@ class LocalPdfDocServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          Tools.url2InputStream(new URL(param._2)) exists {
+          Tools.url2InputStream(param._2) exists {
             is =>
               val map = Map("id" -> Seq(param._1), "url" -> Seq(param._2), "title" -> Seq(param._3), "year" -> Seq(param._4))
               val ret = lpds.createDocument(param._1, is, Some(map))
@@ -72,7 +71,7 @@ class LocalPdfDocServerTest extends FlatSpec {
       parameters.forall {
         param => lpds.getDocument(param._1) exists {
           is => Tools.inputStream2Array(is) exists {
-            arr => Tools.url2InputStream(new URL(param._2)) exists {
+            arr => Tools.url2InputStream(param._2) exists {
               is2 => Tools.inputStream2Array(is2) exists {
                 a2 =>
                   is2.close()
@@ -150,7 +149,7 @@ class LocalPdfDocServerTest extends FlatSpec {
             is => Tools.inputStream2Array(is) exists {
               arr =>
                 is.close()
-                Tools.url2InputStream(new URL(param._2)) exists {
+                Tools.url2InputStream(param._2) exists {
                   is2 => Tools.inputStream2Array(is2) exists {
                     a2 =>
                       is2.close()

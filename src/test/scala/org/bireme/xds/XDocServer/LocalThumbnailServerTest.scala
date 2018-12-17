@@ -8,7 +8,6 @@
 package org.bireme.xds.XDocServer
 
 import java.io.File
-import java.net.URL
 
 import org.scalatest.FlatSpec
 
@@ -33,7 +32,7 @@ class LocalThumbnailServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          Tools.url2InputStream(new URL(param._2)) exists {
+          Tools.url2InputStream(param._2) exists {
             is =>
               val ret = lts.createDocument(param._1, is)
               is.close()

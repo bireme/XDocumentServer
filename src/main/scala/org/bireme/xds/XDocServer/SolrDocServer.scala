@@ -8,7 +8,6 @@
 package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayInputStream, File, InputStream}
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
@@ -177,7 +176,7 @@ class SolrDocServer(url: String) extends DocumentServer {
         409
       case Left(500) => 500
       case _ => // 404 (not found)
-        Tools.url2ByteArray(new URL(url)) match {
+        Tools.url2ByteArray(url) match {
           case Some(arr) =>
             //println(s"arr size=${arr.size}")
 

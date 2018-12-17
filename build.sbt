@@ -2,7 +2,7 @@ lazy val root = (project in file("."))
   .settings(
     inThisBuild(List(
       organization := "org.bireme",
-      scalaVersion := "2.12.7",
+      scalaVersion := "2.12.8",
       version      := "0.1.0-SNAPSHOT"
     )),
     name := "XDocumentServer"
@@ -21,6 +21,7 @@ val httpComponentsVersion = "4.5.6" // "4.5.5"
 val scalajHttpVersion = "2.4.1"
 val circeVersion = "0.10.0" // "0.9.3"
 val commonsIOVersion = "2.6"
+val hasherVersion = "1.2.0"
 val airframeVersion = "0.69" // "0.52"
 val hairyfotrVersion = "0.1.17"
 val scalaTestVersion = "3.0.5"
@@ -44,6 +45,7 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-generic" % circeVersion,
   "io.circe" %% "circe-parser" % circeVersion,
   "commons-io" % "commons-io" % commonsIOVersion,
+  "com.roundeights" %% "hasher" % hasherVersion,
   "org.wvlet.airframe" %% "airframe-log" % airframeVersion,
   "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test"
 )

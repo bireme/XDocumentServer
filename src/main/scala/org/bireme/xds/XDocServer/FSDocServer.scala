@@ -8,7 +8,6 @@
 package org.bireme.xds.XDocServer
 
 import java.io._
-import java.net.URL
 import java.nio.charset.Charset
 import java.nio.file.{Files, StandardOpenOption}
 import java.text.SimpleDateFormat
@@ -97,7 +96,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     if (file.exists() || infoFile.exists()) 409
     else {
       Try {
-        Tools.url2ByteArray(new URL(url)) match {
+        Tools.url2ByteArray(url) match {
           case Some(arr) =>
             if (arr.isEmpty) 500
             else {

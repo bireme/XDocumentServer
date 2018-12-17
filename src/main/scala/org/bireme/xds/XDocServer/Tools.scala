@@ -8,7 +8,7 @@
 package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayOutputStream, File, InputStream}
-import java.net.{URL, URLConnection}
+import java.net.{URI, URL, URLConnection, URLDecoder}
 import java.text.Normalizer
 import java.text.Normalizer.Form
 
@@ -51,29 +51,40 @@ object Tools {
     }
   }
 
-  def url2InputStream(url: URL): Option[InputStream] = {
+  /**
+    * Comvert an url into a input stream
+    * @param url input url string
+    * @return the output imput stream
+    */
+  def url2InputStream(url: String): Option[InputStream] = {
     val timeout = 4 * 60 * 1000
 
     Try {
-      url.getProtocol match {
+      val url1 = new  URL(urlEncode(url))
+      url1.getProtocol match {
         case "http" | "https" =>
-          val conn: URLConnection = url.openConnection()
+          val conn: URLConnection = url1.openConnection()
 
           conn.setConnectTimeout(timeout)
           conn.setReadTimeout(timeout)
           conn.getInputStream
-        case "ftp" => url.openStream()
+        case "ftp" => url1.openStream()
         case _ => throw new IllegalArgumentException("protocol")
       }
     } match {
       case Success(is) => Some(is)
       case Failure(_) =>
-        println(s"--- Error downloading:${url.toString}")
+        println(s"--- Downloading error. url:$url")
         None
     }
   }
 
-  def url2ByteArray(url: URL): Option[Array[Byte]] = {
+  /**
+    * Convert an url into a byte array
+    * @param url the input url string
+    * @return the output byte array
+    */
+  def url2ByteArray(url: String): Option[Array[Byte]] = {
     url2InputStream(url).flatMap {
       is =>
         val arr: Option[Array[Byte]] = inputStream2Array(is)
@@ -91,6 +102,11 @@ object Tools {
     }*/
   }
 
+  /**
+    * Create a new file in a directory
+    * @param directoryToBeCreated the path to the file
+    * @return true if the file was created or false otherwise
+    */
   def createDirectory(directoryToBeCreated: File): Boolean =
     (directoryToBeCreated == null) || directoryToBeCreated.mkdirs()
 
@@ -116,5 +132,17 @@ object Tools {
         val seq: Seq[String] = mp.getOrElse(key, Seq[String]())
         mp + (key -> (seq :+ split(1)))
     }
+  }
+
+  /**
+    * Encoding a url. See https://stackoverflow.com/questions/724043/http-url-address-encoding-in-java
+    * @param surl input url string to encode
+    * @return the encoded url
+    */
+  def urlEncode(surl: String): String = {
+    val url = new URL(URLDecoder.decode(surl, "utf-8"))     // To avoid double encoding
+    val uri = new URI(url.getProtocol, url.getUserInfo, url.getHost,
+                      url.getPort, url.getPath, url.getQuery, url.getRef)
+     uri.toURL.toString  // Do not treat # in the URLpath
   }
 }

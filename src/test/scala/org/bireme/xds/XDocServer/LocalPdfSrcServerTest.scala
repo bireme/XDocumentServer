@@ -8,7 +8,6 @@
 package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayInputStream, File}
-import java.net.URL
 import java.util
 
 import org.scalatest.FlatSpec
@@ -38,7 +37,7 @@ class LocalPdfSrcServerTest extends FlatSpec {
       parameters.forall { param =>
         val id = param._1
         lpds.getDocument(id) match {
-          case Left(err) => (err == 404)
+          case Left(err) => err == 404
           case Right(is) =>
             is.close()
             lpss.deleteDocument(id) match {
@@ -68,7 +67,7 @@ class LocalPdfSrcServerTest extends FlatSpec {
           val lst: Seq[String] = param.productIterator.toList.map(_.toString)
           val info: Map[String, Seq[String]] = fldNames.zip(lst).toMap.map(kv => kv._1 -> Seq(kv._2))
 
-          Tools.url2InputStream(new URL(param._2)) exists {
+          Tools.url2InputStream(param._2) exists {
             is =>
               val ret: Int = lpss.createDocument(param._1, is, Some(info))
               is.close()
@@ -136,7 +135,7 @@ class LocalPdfSrcServerTest extends FlatSpec {
             is =>
               Tools.inputStream2Array(is) exists {
                 arr =>
-                  Tools.url2InputStream(new URL(param._2)) exists {
+                  Tools.url2InputStream(param._2) exists {
                     is2 =>
                       Tools.inputStream2Array(is2) exists {
                         a2 =>

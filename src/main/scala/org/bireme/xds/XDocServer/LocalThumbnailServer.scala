@@ -10,6 +10,8 @@ package org.bireme.xds.XDocServer
 import java.io.InputStream
 import java.net.URL
 
+import com.roundeights.hasher.Algo
+
 class LocalThumbnailServer(docServer: DocumentServer,
                            pdfDocServer : Either[URL, LocalPdfDocServer]) extends DocumentServerImpl(docServer) {
 
@@ -23,17 +25,20 @@ class LocalThumbnailServer(docServer: DocumentServer,
   override def createDocument(id: String,
                               source: InputStream,
                               info: Option[Map[String, Seq[String]]] = None): Int = {
-    myPDFToImage.convert(source) match {
+    val stream = Algo.sha1.tap(source) // Reuse inputstream to calculate hash and generate the thumbnail
+
+    myPDFToImage.convert(stream) match {
       case Some(is) =>
-        val ret = info match {
-          case Some(_) => super.createDocument(id, is, info)
+        val tuple: (String, Seq[String]) = "hash" -> Seq[String](stream.hash)
+        val ret: Int = info match {
+          case Some(_) => super.createDocument(id, is, info.map(_ + tuple))
           case None =>
             if (is.markSupported()) {
               is.mark(Integer.MAX_VALUE)
-              val info2 = createDocumentInfo(id, Some(is))
+              val info2: Map[String, Seq[String]] = createDocumentInfo(id, Some(is)) + tuple
               is.reset()
               super.createDocument(id, is, Some(info2))
-            } else super.createDocument(id, is, Some(createDocumentInfo(id, None)))
+            } else super.createDocument(id, is, Some(createDocumentInfo(id, None) + tuple))
         }
         is.close()
         ret
@@ -51,7 +56,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
   override def createDocument(id: String,
                               url: String,
                               info: Option[Map[String, Seq[String]]]): Int = {
-    Tools.url2InputStream(new URL(url)) match {
+    Tools.url2InputStream(url) match {
       case Some(is) =>
         val ret = createDocument(id, is, info)
         is.close()
@@ -164,7 +169,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
     val url2 = new URL(s"${remoteUrl.getProtocol}://${remoteUrl.getHost}:${remoteUrl.getPort}" +
         s"/getDocument?id=$id&url=$url1")
 
-    Tools.url2InputStream(url2) match {
+    Tools.url2InputStream(url2.toString) match {
       case Some(is) => Right(is)
       case None => Left(400)
     }

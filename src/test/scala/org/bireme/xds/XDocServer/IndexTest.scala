@@ -5,7 +5,7 @@
 
   ==========================================================================*/
 
-package org.bireme.sd
+package org.bireme.xds.XDocServer
 
 import java.io.File
 
