@@ -56,7 +56,8 @@ class UpdateDocuments(pdfDocDir: String,
           val id: Option[Seq[String]] = meta.get("id")
           val url: Option[Seq[String]] = meta.get("ur")
 
-          if (id.isEmpty) println(s"---- Empty id. id=${url.get.head}")
+          if (id.isEmpty && url.isEmpty) println("id and url are empty")
+          else if (id.isEmpty) println(s"---- Empty id. id=${url.get.head}")
           else if (url.isEmpty) println(s"---- Empty url. id=${id.get.head}")
           else {
             val idStr: String = id.get.head
@@ -67,19 +68,23 @@ class UpdateDocuments(pdfDocDir: String,
             lpss match {
               case Some(pss) =>
                 println(s"+++ loading and indexing pdf document id=$idStr url=$urlStr")
-                if (pss.createDocument(idStr, urlStr, Some(meta)) != 201) {
-                  println(s"--- LocalPdfSrcServer document creation error. id=$idStr url=$urlStr")
+                val code = pss.createDocument(idStr, urlStr, Some(meta))
+                if (code != 201) {
+                  println(s"--- LocalPdfSrcServer document creation error. id=$idStr url=$urlStr code=$code")
                 } else {
                   lts.foreach { ts =>
-                    //
-                    if (ts.createDocument(idStr, urlStr, None) != 201)
-                      println(s"--- LocalThumbnailServer document creation error. id=$idStr url=$urlStr")
+                    val code = ts.createDocument(idStr, urlStr, None)
+                    if (code != 201)
+                      println(s"--- LocalThumbnailServer document creation error. id=$idStr url=$urlStr code=$code")
                     else println(s"+++ thumbnail created. id=$idStr url=$urlStr")
                   }
                 }
               case None =>
-                if (lpss.isEmpty && (lpds.createDocument(idStr, urlStr, None) != 201)) {
-                  println(s"--- LocalPdfDocServer document creation error. id=$idStr url=$urlStr")
+                if (lpss.isEmpty) {
+                  val code = lpds.createDocument(idStr, urlStr, None)
+                  if (code != 201) {
+                    println(s"--- LocalPdfDocServer document creation error. id=$idStr url=$urlStr code=$code")
+                  }
                 }
             }
           }
@@ -132,8 +137,11 @@ class UpdateDocuments(pdfDocDir: String,
   private def getStoredIds(lpss: Option[LocalPdfSrcServer],
                            lts: Option[LocalThumbnailServer]): Set[String] = {
     if (lpss.isDefined) {
-      if (lts.isDefined) lpss.get.getDocuments.intersect(lts.get.getDocuments)
-      else lpss.get.getDocuments
+      if (lts.isDefined) {
+        val docs1 = lpss.get.getDocuments
+        val docs2 = lts.get.getDocuments
+        docs1.diff(docs2) ++ (docs2.diff(docs1))
+      } else lpss.get.getDocuments
     } else {
       if (lts.isDefined) lts.get.getDocuments
       else Set[String]()
