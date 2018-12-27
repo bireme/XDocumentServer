@@ -52,7 +52,7 @@ class SolrDocServer(url: String) extends DocumentServer {
   override def getDocuments: Set[String] = {
     val regex: Regex = "\"id\"\\:\"([^\"]+)\"".r
 
-    Try(Http(url1 + "select").params(Map("fl" -> "id", "q" -> "*:*")).timeout(timeout, timeout).asString) match {
+    Try(Http(url1 + "select").params(Map("fl" -> "id", "q" -> "*:*", "rows" -> "10000")).timeout(timeout, timeout).asString) match {
       case Success(response) =>
         if (response.is2xx) {
           regex.findAllMatchIn(response.body).foldLeft(Set[String]()) {

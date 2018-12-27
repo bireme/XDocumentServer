@@ -218,7 +218,9 @@ class UpdateDocuments(pdfDocDir: String,
                           storedIds: Set[String],
                           seq: Seq[Map[String,Seq[String]]]): Seq[Map[String,Seq[String]]] = {
     if (elem.succeeded) {
-      val aux = seq :+ getMetadata(comId, colId, elem, storedIds)
+      val map = getMetadata(comId, colId, elem, storedIds)
+      val aux = if (map.isEmpty) seq
+                else seq :+ map
       getMetadata(comId, colId, elem.right, storedIds, aux)
     } else seq
   }
@@ -235,9 +237,7 @@ class UpdateDocuments(pdfDocDir: String,
       val comId2: Seq[String] = parseCommunity(elem)
       val colId2: Seq[String] = parseCollection(elem)
 
-      println(
-        s"+++ parsing metadata - community:$comId collection:$colId document:${docId.head}"
-      )
+      println(s"+++ parsing metadata - community:$comId collection:$colId document:${docId.head}")
 
       val map: Map[String, Seq[String]] = Map(
         "id" -> docId,
@@ -524,7 +524,7 @@ object UpdateDocuments extends App {
         "\n\t-thumbDir=<dir> - directory where the thumbnail files will be stored" +
         "\n\t-solrColUrl=<url> - solr collection url. For ex: http://localhost:8983/solr/pdfs" +
         "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
-        "\n\t[-docId=<id>] - update only one document whose id is <id>. if used, -communities, -fromDate and --reset parameters are ignored" +
+        "\n\t[-docId=<id>] - update only one document whose id is <id>. if used, --onlyMissing parameter will br ignored" +
         "\n\t[--onlyMissing] - if present, will create pdf/thumbnail files only if they were not already created"
     )
     System.exit(1)
