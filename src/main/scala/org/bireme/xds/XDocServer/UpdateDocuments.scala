@@ -547,14 +547,15 @@ object UpdateDocuments extends App {
   val pdfDocDir = parameters("pdfDocDir").trim
   val thumbDir = parameters("thumbDir").trim
   val solrColUrl = parameters("solrColUrl").trim
-  val thumbServUrl: Option[String] =
-    parameters.get("thumbServUrl").map { turl => // http:/localhost:9090/thumbnailServer/getDocument
+  val thumbServUrl: String = parameters.get("thumbServUrl") match {
+    case Some(turl) => // http:/localhost:9090/thumbnailServer/getDocument
       val url = turl.trim
       if (url.endsWith("/")) url else s"$url/"
-    }
+    case None =>  "http://thumbnailserver.bvsalud.org/"
+  }
   val docId = parameters.get("docId").map(_.trim)
   val onlyMissing = parameters.contains("onlyMissing")
-  val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, thumbServUrl)
+  val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, Some(thumbServUrl))
 
   docId match {
     case Some(did) =>
