@@ -551,7 +551,7 @@ object UpdateDocuments extends App {
     case Some(turl) => // http:/localhost:9090/thumbnailServer/getDocument
       val url = turl.trim
       if (url.endsWith("/")) url else s"$url/"
-    case None =>  "http://thumbnailserver.bvsalud.org/"
+    case None =>  "http://thumbnailserver.bvsalud.org/getDocument/"
   }
   val docId = parameters.get("docId").map(_.trim)
   val onlyMissing = parameters.contains("onlyMissing")
