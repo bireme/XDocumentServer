@@ -81,6 +81,12 @@ class DocumentServerImpl(docServer: DocumentServer) extends DocumentServer {
   override def deleteDocument(id: String): Int = docServer.deleteDocument(id)
 
   /**
+    * Delete all stored documents
+    * @return a http error code. 200 (ok) or or 500 (internal server error)
+    */
+  def deleteDocuments(): Int = docServer.deleteDocuments()
+
+  /**
     * Retrieve metadata of a stored pdf document
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)

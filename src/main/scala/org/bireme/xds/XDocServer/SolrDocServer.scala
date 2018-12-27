@@ -23,24 +23,25 @@ class SolrDocServer(url: String) extends DocumentServer {
   val urlT: String = url.trim
   val url1: String = if (urlT.endsWith("/")) urlT else urlT + "/"
 
-  val mainFields = Set("id",      // identificador,
-                       "_text_")  // texto do documento
+  val mainFields: Set[String] = Set("id",      // identificador,
+                                    "_text_")  // texto do documento
 
-  val metadataFields = Set("id",            // identificador
-                           "ti",            // título
-                           "type",          // tipo de documento
-                           "au",            // autor
-                           "da",            // ano
-                           "kw",            // palavras chave
-                           "fo",            // fonte
-                           "ab",            // resumo
-                           "ur",            // url
-                           "la",            // idioma
-                           "mh",            // descritores
-                           "com",           // comunidade
-                           "col",           // coleção
-                           "ud",            // data de atualização
-                           "tu")            // url do thumbnail
+  val metadataFields: Set[String] =
+    Set("id",            // identificador
+        "ti",            // título
+        "type",          // tipo de documento
+        "au",            // autor
+        "da",            // ano
+        "kw",            // palavras chave
+        "fo",            // fonte
+        "ab",            // resumo
+        "ur",            // url
+        "la",            // idioma
+        "mh",            // descritores
+        "com",           // comunidade
+        "col",           // coleção
+        "ud",            // data de atualização
+        "tu")            // url do thumbnail
   val timeout: Int = 4 * 60 * 1000
 
   /**
@@ -255,6 +256,28 @@ class SolrDocServer(url: String) extends DocumentServer {
         response2.code match {
           case 200 => 200
           case 404 => 404
+          case _ => 500
+        }
+      case _ => 500
+    }
+  }
+
+  /**
+    * Delete all stored documents
+    * @return a http error code. 200 (ok) or or 500 (internal server error)
+    */
+  def deleteDocuments(): Int = {
+    //http://host:port/solr/[core name]/update?stream.body=<delete><query>*:*</query></delete>&commit=true
+    val response1 = Http(url1 + "update").headers(Seq("Content-type" -> "text/xml", "Accept"-> "*/*")).timeout(timeout, timeout)
+      .postData("<delete><query>*:*</query></delete>").asString
+
+    response1.code match {
+      case 200 =>
+        val response2 = Http(url1 + "update").header("Content-type", "text/xml").timeout(timeout, timeout)
+          .postData("<commit/>").asString
+        //println(s"response=${response2.body}")
+        response2.code match {
+          case 200 => 200
           case _ => 500
         }
       case _ => 500

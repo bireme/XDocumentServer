@@ -93,7 +93,8 @@ class UpdateDocuments(pdfDocDir: String,
     * Store and index all pdfs and thumbnails
     */
   def addAll(): Unit = {
-    Tools.deleteDirectory(new File(pdfDocDir))
+    lpss.deleteDocuments()
+    lts.deleteDocuments()
 
     getMetadata(Set[String]()) foreach {
       meta =>

@@ -103,13 +103,18 @@ object Tools {
   }
 
   /**
-    * Create a new file in a directory
-    * @param directoryToBeCreated the path to the file
+    * Create a new directory
+    * @param directoryToBeCreated the path to the directory
     * @return true if the file was created or false otherwise
     */
   def createDirectory(directoryToBeCreated: File): Boolean =
     (directoryToBeCreated == null) || directoryToBeCreated.mkdirs()
 
+  /**
+    * Delete a directory
+    * @param directoryToBeDeleted the path to the directory
+    * @return true if the file was deleted or false otherwise
+    */
   def deleteDirectory(directoryToBeDeleted: File): Boolean = {
     val allContents = directoryToBeDeleted.listFiles
     if (allContents != null) allContents.foreach(file => deleteDirectory(file))
