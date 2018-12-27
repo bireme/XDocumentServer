@@ -14,7 +14,7 @@ import org.scalatest.FlatSpec
 
 class LocalPdfSrcServerTest extends FlatSpec {
   // id(issn), url, title, year
-  val parameters = Set(
+  val parameters: Set[(String, String, String, String)] = Set(
     ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
       "Critérios Diagnósticos de Infecção Relacionada à Assistência à Saúde", "2013"),
     ("2", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf",

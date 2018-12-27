@@ -14,7 +14,7 @@ import scala.util.{Failure, Success, Try}
 
 class HttpPdfSrcServerTest  extends FlatSpec {
   // id(issn), url, title, year
-  val parameters = Set(
+  val parameters: Set[(String, String, String, String)] = Set(
     ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
       "Critérios Diagnósticos de Infecção Relacionada à Assistência à Saúde", "2013"),
     ("1677-7042", "http://pesquisa.in.gov.br/imprensa/jsp/visualiza/index.jsp?jornal=1&pagina=68&data=22/09/2017",
@@ -46,7 +46,7 @@ class HttpPdfSrcServerTest  extends FlatSpec {
             response.is2xx
           } match {
             case Success(boo) => boo
-            case Failure(err) => false
+            case Failure(_) => false
           }
       }
     )

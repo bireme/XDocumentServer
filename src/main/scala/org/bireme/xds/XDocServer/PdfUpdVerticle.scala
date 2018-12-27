@@ -17,14 +17,15 @@ class PdfUpdVerticle(pdfDocDir: String,
     val eb: EventBus = vertx.eventBus()
     println("PdfUpdVerticle is now running ...")
 
-    eb.consumer(
-      "org.bireme.xds.UpdateDocuments.upd",
+    eb.consumer("org.bireme.xds.UpdateDocuments.upd",
       (message: io.vertx.scala.core.eventbus.Message[String]) => {
         println("Processing update request...")
         val id = message.body()
-        val updDocs = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, None)
-        if (!updDocs.updateOne(id)) {
-          error(s"error in updating document id=$id")
+        if (solrColUrl.isDefined && thumbDir.isDefined) {
+          val updDocs = new UpdateDocuments(pdfDocDir, solrColUrl.get, thumbDir.get, None)
+          if (!updDocs.updateOne(id)) {
+            error(s"error in updating document id=$id")
+          }
         }
       }
     )

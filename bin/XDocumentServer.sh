@@ -3,14 +3,8 @@
 # Vai para diretório da aplicação XDocumentServer
 cd /home/javaapps/sbt-projects/XDocumentServer/
 
-# Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa os documentos pdfs a partir de certa data
+# Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa somente os documentos pdfs não armazenados
 FULL_INDEXING=0
-
-# A partir de quantos dias se faz a atualizacao
-DAYS_AGO=1
-
-# Data de inicio da atualização
-FROM_DAY= `date --date="$DAYS_AGO days ago" +%Y-%m-%d`
 
 JAVA_HOME=/usr/local/oracle-8-jdk
 J2SDKDIR=${JAVA_HOME}
@@ -60,7 +54,7 @@ fi
 if [ "$FULL_INDEXING" -eq 0 ]; then
   sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://thumbnailserver.bvsalud.org/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --onlyMissing"
 else
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://thumbnailserver.bvsalud.org/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --reset"
+  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://thumbnailserver.bvsalud.org/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument"
 fi
 ret="$?"
 
