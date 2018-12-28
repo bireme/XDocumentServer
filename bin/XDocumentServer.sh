@@ -21,7 +21,7 @@ SOLR_DIR=/usr/local/solr-7.5.0
 SOLR_PORT=9292
 
 # Diretório das coleções
-COL_DIR=$SOLR_DIR/server/solr/
+COL_DIR=$SOLR_DIR/server/solr
 
 # Diretório no servidor de produçao
 SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
@@ -54,6 +54,7 @@ fi
 if [ "$FULL_INDEXING" -eq 0 ]; then
   sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --onlyMissing"
 else
+  bin/delstart.sh  # Reinicializa o índice pdfs e o servidor (que pode ficar com o índice em memória)
   sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument"
 fi
 ret="$?"
