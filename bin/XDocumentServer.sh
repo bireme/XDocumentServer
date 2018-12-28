@@ -35,7 +35,7 @@ fi
 mkdir old
 
 # Copia índice lucene anterior para diretório 'old'
-if [[ -e "$COL_DIR/pdfs" ]]; then
+if [ -e "$COL_DIR/pdfs" ]; then
   mkdir -p old/index
   cp -r ${COL_DIR}/pdfs old/index
 fi
@@ -52,9 +52,9 @@ fi
 
 # Gera os arquivos pdfs e thumbnails e o índice lucene
 if [ "$FULL_INDEXING" -eq 0 ]; then
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://thumbnailserver.bvsalud.org/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --onlyMissing"
+  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --onlyMissing"
 else
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://thumbnailserver.bvsalud.org/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument"
+  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument"
 fi
 ret="$?"
 
@@ -64,9 +64,9 @@ if [ "$?" -ne 0 ]; then
     rm -r bug
   fi
   mkdir bug
+  mkdir bug/index
   mv pdfs bug
   mv thumbnails bug
-  mk index
   mv ${COL_DIR}/pdfs bug/index
   mv old/pdfs pdfs
   mv old/thumbnails thumbnails
@@ -85,12 +85,12 @@ if [ "$hitsLocal" -ne 0 ]; then
     rm -r bug
   fi
   mkdir bug
+  mkdir bug/index
   mv pdfs bug
   mv thumbnails bug
-  mk index
   mv ${COL_DIR}/pdfs bug/index
   mv old/pdfs pdfs_old
-  mv old/thumbnails thumbnailserver
+  mv old/thumbnails thumbnails
   mv old/index/pdfs ${COL_DIR}
   sendemail -f appofi@bireme.org -u "XDocumentServer - Local index check ERROR - `date '+%Y-%m-%d'`" -m "XDocumentServer - Erro na checagem de índice local 'pdfs'" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
