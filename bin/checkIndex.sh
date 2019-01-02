@@ -8,7 +8,7 @@ PATH=$JAVA_HOME/bin:$PATH
 XDOCSERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
 cd $XDOCSERVER_DIR
 
-sbt "test:runMain org.bireme.sd.IndexTest $1 $2 $3"
+sbt "runMain org.bireme.xds.XDocServer.IndexTest $1 $2 $3"
 hits="$?"
 
 cd -

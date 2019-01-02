@@ -1,19 +1,12 @@
-/*=========================================================================
-
-    XDocumentServer © Pan American Health Organization, 2018.
-    See License at: https://github.com/bireme/XDocumentServer/blob/master/LICENSE.txt
-
-  ==========================================================================*/
-
 package org.bireme.xds.XDocServer
 
+import collection.JavaConverters._
 import java.io.File
 
 import org.apache.lucene.index.{DirectoryReader, IndexReader, Term}
 import org.apache.lucene.search.{IndexSearcher, TermQuery, TopDocs}
 import org.apache.lucene.store.FSDirectory
 
-import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 object IndexTest extends App {

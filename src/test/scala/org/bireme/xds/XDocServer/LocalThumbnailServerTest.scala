@@ -20,7 +20,7 @@ class LocalThumbnailServerTest extends FlatSpec {
     ("4", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf"),
     ("5", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf")
   )
-
+f
   val pdir = new File("pdfs2")
   val tdir = new File("thumbnails")
   Tools.deleteDirectory(tdir)
