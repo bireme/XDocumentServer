@@ -40,14 +40,16 @@ if [ -e "$COL_DIR/pdfs" ]; then
   cp -r ${COL_DIR}/pdfs old/index
 fi
 
-# Move 'pdfs' para diretório 'old'
-if [ -e "pdfs" ]; then
-  mv pdfs old
-fi
+if [ "$FULL_INDEXING" -eq 1 ]; then
+  # Move 'pdfs' para diretório 'old'
+  if [ -e "pdfs" ]; then
+    mv pdfs old
+  fi
 
-# Move 'thumbnails' para diretório 'old'
-if [ -e "thumbnails" ]; then
-  mv thumbnails old
+  # Move 'thumbnails' para diretório 'old'
+  if [ -e "thumbnails" ]; then
+    mv thumbnails old
+  fi
 fi
 
 # Gera os arquivos pdfs e thumbnails e o índice lucene
@@ -60,69 +62,157 @@ fi
 ret="$?"
 
 # Se ocorreu erro restaura situação anterior, manda email e sai
-if [ "$?" -ne 0 ]; then
-  if [ -e "bug" ]; then
-    rm -r bug
-  fi
-  mkdir bug
-  mkdir bug/index
-  mv pdfs bug
-  mv thumbnails bug
-  mv ${COL_DIR}/pdfs bug/index
-  mv old/pdfs pdfs
-  mv old/thumbnails thumbnails
+if [ "$ret" -ne 0 ]; then
+  mv old/pdfs .
+  mv old/thumbnails .
   mv old/index/pdfs ${COL_DIR}
   sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents ERROR - `date '+%Y-%m-%d'`" -m "XDocumentServer - Erro na geracao de pdfs e/ou thumbnails" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
 
-# Checa índice 'pdfs' recém-criado
-bin/checkIndex.sh index/pdfs ab salud
+# Checa índice 'pdfs'
+bin/checkIndex.sh $COL_DIR/pdfs/data/index ab salud
 hitsLocal="$?"
 
 # Se ocorreu erro restaura situação anterior, manda email e sai
-if [ "$hitsLocal" -ne 0 ]; then
-  if [ -e "bug" ]; then
-    rm -r bug
-  fi
-  mkdir bug
-  mkdir bug/index
-  mv pdfs bug
-  mv thumbnails bug
-  mv ${COL_DIR}/pdfs bug/index
-  mv old/pdfs pdfs_old
-  mv old/thumbnails thumbnails
+if [ "$hitsLocal" -eq 0 ]; then
+  mv old/pdfs .
+  mv old/thumbnails .
   mv old/index/pdfs ${COL_DIR}
   sendemail -f appofi@bireme.org -u "XDocumentServer - Local index check ERROR - `date '+%Y-%m-%d'`" -m "XDocumentServer - Erro na checagem de índice local 'pdfs'" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
 
-# Copia diretório 'pdfs' para servidor de produção
-${MISC}/sendFiles.sh pdfs ${SERVER}:${SERVER_DIR}/
+# Apaga versão anterior do arquivo "tmp/pdfs.tgz"
+if [ -e "tmp/pdfs.tgz" ]; then
+  rm tmp/pdfs.tgz
+fi
+
+# Apaga versão anterior do arquivo "tmp/thumbnails.tgz"
+if [ -e "tmp/thumbnails.tgz" ]; then
+  rm tmp/thumbnails.tgz
+fi
+
+# Apaga versão anterior do arquivo "tmp/pdfsIndex.tgz"
+if [ -e "tmp/index/pdfsIndex.tgz" ]; then
+  rm tmp/index/pdfsIndex.tgz
+fi
+
+# Compacta diretório pdfs
+tar -cvzpf pdfs.tgz pdfs
 result="$?"
 if [ "${result}" -ne 0 ]; then
-  sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'pdfs' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'pdfs' para $SERVER:$SERVER_DIR/" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'pdfs' compression ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na compactação do diretório 'pdfs'" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
 
-# Copia diretório 'thumbnails' para servidor de produção
-${MISC}/sendFiles.sh thumbanails $SERVER:$SERVER_DIR/
+# Compacta diretório pdfs
+tar -cvzpf thumbnails.tgz thumbnails
 result="$?"
 if [ "${result}" -ne 0 ]; then
-  c -f appofi@bireme.org -u "XDocumentServer - Directory 'thumbnails' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'thumbnails' para $SERVER:$SERVER_DIR/" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'thumbnails' compression ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na compactação do diretório 'thumbnails'" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
+
+# Compacta diretório com o índice pdfs
+cd $COL_DIR
+tar -cvzpf pdfsIndex.tgz pdfs
+result="$?"
+if [ "${result}" -ne 0 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'pdfsIndex' compression ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na compactação do diretório 'pdfsIndex'" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+cd -
+mv $COL_DIR/pdfsIndex.tgz .
+
+# Cria diretório temporário de transferência no servidor de produção
+ssh ${TRANSFER}@${SERVER} mkdir ${SERVER_DIR}/tmp
+ssh ${TRANSFER}@${SERVER} mkdir ${SERVER_DIR}/tmp/index
+
+# Copia arquivo 'pdfs.tgz' para servidor de produção
+scp pdfs.tgz ${TRANSFER}@${SERVER}:${SERVER_DIR}/tmp
+result="$?"
+if [ "${result}" -ne 0 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'pdfs' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'pdfs' para $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+
+# Copia arquivo 'thumbnails.tgz' para servidor de produção
+scp thumbnails.tgz ${TRANSFER}@${SERVER}:${SERVER_DIR}/tmp
+result="$?"
+if [ "${result}" -ne 0 ]; then
+  c -f appofi@bireme.org -u "XDocumentServer - Directory 'thumbnails' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'thumbnails' para $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+
+# Copia arquivo 'pdfsIndex.tgz' para servidor de produção
+scp pdfsIndex.tgz ${TRANSFER}@${SERVER}:${SERVER_DIR}/tmp/index
+result="$?"
+if [ "${result}" -ne 0 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Index 'pdfs' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do índice 'pdfs' para $SERVER:$SERVER_DIR/tmp/index" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+
+# Descompacta arquivo 'pdfs.tgz' no diretório de produção
+ssh ${TRANSFER}@${SERVER} tar -xvzpf ${SERVER_DIR}/tmp/pdfs.tgz -C ${SERVER_DIR}/tmp
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Uncompressing 'pdfs.tgz' file ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na descompressão do arquivo 'pdfs.tgz' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+
+# Descompacta arquivo 'thumbnails.tgz' no diretório de produção
+ssh ${TRANSFER}@${SERVER} tar -xvzpf ${SERVER_DIR}/tmp/thumbnails.tgz -C ${SERVER_DIR}/tmp
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Uncompressing 'thumbnails.tgz' file ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na descompressão do arquivo 'thumbnails.tgz' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+
+# Descompacta arquivo 'pdfsIndex.tgz' no diretório de produção
+ssh ${TRANSFER}@${SERVER} tar -xvzpf ${SERVER_DIR}/tmp/index/pdfsIndex.tgz -C ${SERVER_DIR}/tmp/index
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Uncompressing 'thumbnails.tgz' file ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na descompressão do arquivo 'thumbnails.tgz' em $SERVER:$SERVER_DIR/tmp/index" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+
+
+# Copia diretório 'pdfs' para servidor de produção
+#${MISC}/sendFiles.sh pdfs ${SERVER}:${SERVER_DIR}/
+#result="$?"
+#if [ "${result}" -ne 0 ]; then
+#  sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'pdfs' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'pdfs' para $SERVER:$SERVER_DIR/" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+#  exit 1
+#fi
+
+## Copia diretório 'thumbnails' para servidor de produção
+#${MISC}/sendFiles.sh thumbnails $SERVER:$SERVER_DIR/
+#result="$?"
+#if [ "${result}" -ne 0 ]; then
+#  sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'thumbnails' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'thumbnails' para $SERVER:$SERVER_DIR/" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+#  exit 1
+#fi
 
 # Copia índice 'pdfs' para servidor de produção
-${MISC}/sendFiles.sh $COL_DIR/pdfs $SERVER:$SERVER_DIR/index
-result="$?"
-if [ "${result}" -ne 0 ]; then
-  sendemail -f appofi@bireme.org -u "XDocumentServer - Index 'pdfs' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do índice 'pdfs' para $SERVER:$SERVER_DIR/index/" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
-  exit 1
-fi
+#${MISC}/sendFiles.sh $COL_DIR/pdfs $SERVER:$COL_DIR/
+#result="$?"
+#if [ "${result}" -ne 0 ]; then
+#  sendemail -f appofi@bireme.org -u "XDocumentServer - Index 'pdfs' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do índice 'pdfs' para $SERVER:$SERVER_DIR/index/" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+#  exit 1
+#fi
 
 # Checa qualidade dos índice 'pdfs'
-ssh ${TRANSFER}@${SERVER} ${SERVER_DIR}/bin/checkIndex.sh index/pdfs.new ab salud
+#ssh ${TRANSFER}@${SERVER} ${SERVER_DIR}/bin/checkIndex.sh $COL_DIR/pdfs.new/data/index ab salud
+#hitsRemoto="$?"
+
+#if [ "${hitsRemoto}" -ne "${hitsLocal}" ]; then  # Índice apresenta problemas
+#  sendemail -f appofi@bireme.org -u "XDocumentServer - Remote index check ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na checagem da qualidade do índice remoto 'pdfs' no servidor de produção" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+#  exit 1
+#fi
+
+# Checa qualidade dos índice 'pdfs'
+ssh ${TRANSFER}@${SERVER} ${SERVER_DIR}/bin/checkIndex.sh ${SERVER_DIR}/tmp/index/pdfs/data/index ab salud
 hitsRemoto="$?"
 
 if [ "${hitsRemoto}" -ne "${hitsLocal}" ]; then  # Índice apresenta problemas
@@ -130,20 +220,42 @@ if [ "${hitsRemoto}" -ne "${hitsLocal}" ]; then  # Índice apresenta problemas
   exit 1
 fi
 
+
 # Faz a rotação do diretório 'pdfs'
-ssh ${TRANSFER}@${SERVER} "if [ -e '${SERVER_DIR}/pdfs' ]; then rm -r ${SERVER_DIR}/pdfs; fi"
-ssh ${TRANSFER}@${SERVER} "mv ${SERVER_DIR}/pdfs.new ${SERVER_DIR}/pdfs"
+ssh ${TRANSFER}@${SERVER} rm -r ${SERVER_DIR}/pdfs
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'pdfs' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'pdfs' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+ssh ${TRANSFER}@${SERVER} mv ${SERVER_DIR}/tmp/pdfs ${SERVER_DIR}/
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'pdfs' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'pdfs' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
 
 # Faz a rotação do diretório 'thumbnails'
-ssh ${TRANSFER}@${SERVER} "if [ -e '${SERVER_DIR}/thumbnails' ]; then rm -r ${SERVER_DIR}/thumbnails; fi"
-ssh ${TRANSFER}@${SERVER} "mv ${SERVER_DIR}/thumbnails.new ${SERVER_DIR}/thumbnails"
+ssh ${TRANSFER}@${SERVER} rm -r ${SERVER_DIR}/thumbnails
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'thumbnails' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'thumbnails' em $SERVER:$SERVER_DIR" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+ssh ${TRANSFER}@${SERVER} mv ${SERVER_DIR}/tmp/thumbnails ${SERVER_DIR}/
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'thumbnails' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'thumbnails' em $SERVER:$SERVER_DIR" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
 
 # Faz a rotação do índice 'pdfs'
-ssh ${TRANSFER}@${SERVER} "${SOLR_DIR}/bin/solr stop -p ${SOLR_PORT}"
-sleep 10s
-ssh ${TRANSFER}@${SERVER} "if [ -e '${COL_DIR}/pdfs' ]; then rm -r ${COL_DIR}/pdfs; fi"
-ssh ${TRANSFER}@${SERVER} "mv ${SERVER_DIR}/pdfs.new ${COL_DIR}/pdfs"
-ssh ${TRANSFER}@${SERVER} "${SOLR_DIR}/bin/solr start -p ${SOLR_PORT}"
+ssh ${TRANSFER}@${SERVER} ${SERVER_DIR}/bin/rotateIndex.sh
+result="$?"
+if [ "${result}" -eq 255 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating index 'pdfs' ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do índice 'pdfs' em $SERVER:$COL_DIR" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
 
 cd -
 

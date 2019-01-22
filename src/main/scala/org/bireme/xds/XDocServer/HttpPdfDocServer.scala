@@ -118,7 +118,9 @@ object HttpPdfDocServer extends App {
 
   if (pdfDir.isEmpty) usage()
 
-  val localPdfDocServer = new LocalPdfDocServer(new FSDocServer(new File(pdfDir.get)))
+  val pdfDocServer = new FSDocServer(new File(parameters(pdfDir.get)))
+  //val pdfDocServer = new SwayDBServer(new File(parameters(pdfDir.get)))
+  val localPdfDocServer = new LocalPdfDocServer(pdfDocServer)
 
   new HttpPdfDocServer(localPdfDocServer, serverPort)
   System.in.read()

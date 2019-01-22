@@ -25,6 +25,7 @@ val hasherVersion = "1.2.0"
 val airframeVersion = "0.69" // "0.52"
 val hairyfotrVersion = "0.1.17"
 val scalaTestVersion = "3.0.5"
+val swaydbVersion = "0.6"
 
 resolvers += "Restlet Repositories" at "http://maven.restlet.org"
 
@@ -47,7 +48,8 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % commonsIOVersion,
   "com.roundeights" %% "hasher" % hasherVersion,
   "org.wvlet.airframe" %% "airframe-log" % airframeVersion,
-  "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test"
+  "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test",
+  "io.swaydb" %% "swaydb" % swaydbVersion
 )
 
 logBuffered in Test := false

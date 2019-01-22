@@ -143,9 +143,12 @@ object HttpThumbnailServer extends App {
 
   val serverPort = parameters.getOrElse("serverPort", "9090").toInt
   val documentServer = new FSDocServer(new File(parameters("thumbDir")))
+  //val documentServer = new SwayDBServer(new File(parameters("thumbDir")))
   val localThumbnailServer: LocalThumbnailServer = parameters.get("pdfDir") match {
-    case Some(pdfDir) => new LocalThumbnailServer(documentServer,
-                                                  Right(new LocalPdfDocServer(new FSDocServer(new File(pdfDir)))))
+    case Some(pdfDir) =>
+      val pdfDocServer = new FSDocServer(new File(parameters(pdfDir)))
+      //val pdfDocServer = new SwayDBServer(new File(parameters(pdfDir)))
+      new LocalThumbnailServer(documentServer, Right(new LocalPdfDocServer(pdfDocServer)))
     case None => parameters.get("pdfDocServer") match {
       case Some(url) => new LocalThumbnailServer(documentServer, Left(new URL(url)))
       case None => throw new IllegalArgumentException("(-pdfDir=<dir>|-pdfDocServer=<url>)")

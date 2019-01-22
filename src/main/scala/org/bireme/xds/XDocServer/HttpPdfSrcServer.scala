@@ -130,9 +130,11 @@ object HttpPdfSrcServer extends App {
   if (pdfDir.isEmpty) usage()
   if (solrColUrl.isEmpty) usage()
 
-  val localPdfDocServer = new LocalPdfDocServer(new FSDocServer(new File(pdfDir.get)))
+  val docServer = new FSDocServer(new File(pdfDir.get))
+  //val docServer = new SwayDBServer(new File(pdfDir.get))
+  val localPdfDocServer = new LocalPdfDocServer(docServer)
   val solrDocServer = new SolrDocServer(solrColUrl.get)
-  val localPdfSrcServer = new LocalPdfSrcServer(solrDocServer, new LocalPdfDocServer(new FSDocServer(new File(pdfDir.get))))
+  val localPdfSrcServer = new LocalPdfSrcServer(solrDocServer, localPdfDocServer)
 
   new HttpPdfSrcServer(localPdfSrcServer, serverPort)
   System.in.read()

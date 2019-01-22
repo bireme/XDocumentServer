@@ -245,20 +245,29 @@ class SolrDocServer(url: String) extends DocumentServer {
     //curl http://localhost:8983/solr/teste3/update -H "Content-type: text/xml" --data-binary '<commit/>'
 
     //val response1 = Http("http://localhost:9000/solr/teste3/config")
-    val response1 = Http(url1 + "update").headers(Seq("Content-type" -> "text/xml", "Accept"-> "*/*")).timeout(timeout, timeout)
-      .postData(s"<delete><query>id:$id</query></delete>").asString
-
-    response1.code match {
-      case 200 =>
-        val response2 = Http(url1 + "update").header("Content-type", "text/xml").timeout(timeout, timeout)
-          .postData("<commit/>").asString
-//println(s"response=${response2.body}")
-        response2.code match {
-          case 200 => 200
+    Try(Http(url1 + "update").headers(Seq("Content-type" -> "text/xml", "Accept"-> "*/*"))
+      .timeout(timeout, timeout)
+      .postData(s"<delete><query>id:$id</query></delete>").asString) match {
+      case Success(response: HttpResponse[String]) =>
+        response.code match {
+          case 200 =>
+            Try(Http(url1 + "update").header("Content-type", "text/xml").timeout(timeout, timeout)
+              .postData("<commit/>").asString) match {
+                case Success(response: HttpResponse[String]) =>
+                  response.code match {
+                    case 200 => 200
+                    case _ => 500
+                  }
+                case Failure(exception) =>
+                  println(s"exception=$exception")
+                  500
+              }
           case 404 => 404
           case _ => 500
         }
-      case _ => 500
+      case Failure(exception) =>
+        println(s"exception=$exception")
+        500
     }
   }
 
@@ -268,19 +277,28 @@ class SolrDocServer(url: String) extends DocumentServer {
     */
   def deleteDocuments(): Int = {
     //http://host:port/solr/[core name]/update?stream.body=<delete><query>*:*</query></delete>&commit=true
-    val response1 = Http(url1 + "update").headers(Seq("Content-type" -> "text/xml", "Accept"-> "*/*")).timeout(timeout, timeout)
-      .postData("<delete><query>*:*</query></delete>").asString
-
-    response1.code match {
-      case 200 =>
-        val response2 = Http(url1 + "update").header("Content-type", "text/xml").timeout(timeout, timeout)
-          .postData("<commit/>").asString
-        //println(s"response=${response2.body}")
-        response2.code match {
-          case 200 => 200
+    Try(Http(url1 + "update").headers(Seq("Content-type" -> "text/xml", "Accept"-> "*/*"))
+      .timeout(timeout, timeout)
+      .postData("<delete><query>*:*</query></delete>").asString) match {
+      case Success(response: HttpResponse[String]) =>
+        response.code match {
+          case 200 =>
+            Try(Http(url1 + "update").header("Content-type", "text/xml").timeout(timeout, timeout)
+              .postData("<commit/>").asString) match {
+              case Success(response: HttpResponse[String]) =>
+                response.code match {
+                  case 200 => 200
+                  case _ => 500
+                }
+              case Failure(exception) =>
+                println(s"exception=$exception")
+                500
+            }
           case _ => 500
         }
-      case _ => 500
+      case Failure(exception) =>
+        println(s"exception=$exception")
+        500
     }
   }
 

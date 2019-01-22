@@ -20,13 +20,17 @@ class LocalThumbnailServerTest extends FlatSpec {
     ("4", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf"),
     ("5", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf")
   )
-f
+
   val pdir = new File("pdfs2")
   val tdir = new File("thumbnails")
   Tools.deleteDirectory(tdir)
 
-  val lpds = new LocalPdfDocServer(new FSDocServer(pdir))
-  val lts = new LocalThumbnailServer(new FSDocServer(tdir), Right(lpds))
+  val pdfDocServer = new FSDocServer(pdir)
+  //val pdfDocServer = new SwayDBServer(pdir)
+  val lpds = new LocalPdfDocServer(pdfDocServer)
+  val thumbDocServer = new FSDocServer(tdir)
+  //val thumbDocServer = new SwayDBServer(tdir)
+  val lts = new LocalThumbnailServer(thumbDocServer, Right(lpds))
 
   "The local thumbnail server" should "import some pdf files from internet using createDocument" in {
     assert(

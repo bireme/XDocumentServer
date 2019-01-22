@@ -28,7 +28,9 @@ class LocalPdfDocServerTest extends FlatSpec {
 
   val dir: File = new File("pdfs2")
   Tools.deleteDirectory(dir)
-  val lpds = new LocalPdfDocServer(new FSDocServer(dir))
+  val docServer = new FSDocServer(dir)
+  //val docServer = new SwayDBServer(dir)
+  val lpds = new LocalPdfDocServer(docServer)
 
   "The local pdf doc server" should "import some pdf files from internet using createDocument" in {
     assert(

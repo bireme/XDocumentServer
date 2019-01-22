@@ -23,9 +23,13 @@ class UpdateDocuments(pdfDocDir: String,
                       thumbServUrl: Option[String]) {
   val fiadminApi = "http://fi-admin.bvsalud.org/api"
 
-  val lpds: LocalPdfDocServer = new LocalPdfDocServer(new FSDocServer(new File(pdfDocDir)))
+  val pdfDocServer = new FSDocServer(new File(pdfDocDir))
+  //val pdfDocServer = new SwayDBServer(new File(pdfDocDir))
+  val lpds: LocalPdfDocServer = new LocalPdfDocServer(pdfDocServer)
   val lpss: LocalPdfSrcServer = new LocalPdfSrcServer(new SolrDocServer(solrColUrl), lpds)
-  val lts: LocalThumbnailServer = new LocalThumbnailServer(new FSDocServer(new File(thumbDir)), Right(lpds))
+  val thumbDocServer = new FSDocServer(new File(thumbDir))
+  //val thumbDocServer = new SwayDBServer(new File(thumbDir))
+  val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
 
   /**
     * Update the contents of only one document (metadata + thumbnail)
@@ -76,14 +80,17 @@ class UpdateDocuments(pdfDocDir: String,
           val idStr: String = id.get.head
           val urlStr: String = url.get.head
 
+          println(s"\nProcessing document:$idStr")
           if (lpssIds.contains(idStr)) {
             val code = lts.createDocument(idStr, urlStr, None)
+            val prefix = if (code == 201) "+++" else "---"
             val status = if (code == 201) "OK" else "ERROR"
-            println(s"+++ LocalThumbnailServer document creation $status. id=$idStr url=$urlStr code=$code")
+            println(s"$prefix LocalThumbnailServer document creation $status. id=$idStr url=$urlStr code=$code")
           } else {
             val code = lpss.createDocument(idStr, urlStr, Some(meta))
+            val prefix = if (code == 201) "+++" else "---"
             val status = if (code == 201) "OK" else "ERROR"
-            println(s"+++ LocalPdfSrcServer document creation $status. id=$idStr url=$urlStr code=$code")
+            println(s"$prefix LocalPdfSrcServer document creation $status. id=$idStr url=$urlStr code=$code")
           }
         }
     }
@@ -108,13 +115,16 @@ class UpdateDocuments(pdfDocDir: String,
           val idStr: String = id.get.head
           val urlStr: String = url.get.head
 
+          println(s"\nProcessing document:$idStr")
           val code1 = lpss.createDocument(idStr, urlStr, Some(meta))
+          val prefix1 = if (code1 == 201) "+++" else "---"
           val status1 = if (code1 == 201) "OK" else "ERROR"
-          println(s"+++ LocalPdfSrcServer document creation $status1. id=$idStr url=$urlStr code=$code1")
+          println(s"$prefix1 LocalPdfSrcServer document creation $status1. id=$idStr url=$urlStr code=$code1")
 
           val code2 = lts.createDocument(idStr, urlStr, None)
+          val prefix2 = if (code2 == 201) "+++" else "---"
           val status2 = if (code2 == 201) "OK" else "ERROR"
-          println(s"+++ LocalThumbnailServer document creation $status2. id=$idStr url=$urlStr code=$code2")
+          println(s"$prefix2 LocalThumbnailServer document creation $status2. id=$idStr url=$urlStr code=$code2")
         }
     }
   }

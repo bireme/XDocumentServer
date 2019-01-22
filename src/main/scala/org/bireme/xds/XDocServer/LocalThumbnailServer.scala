@@ -6,12 +6,16 @@
   ==========================================================================*/
 
 package org.bireme.xds.XDocServer
-
 import java.io.InputStream
 import java.net.URL
 
 import com.roundeights.hasher.Algo
 
+/**
+  *
+  * @param docServer a document server to store/retrieve the thumbnails
+  * @param pdfDocServer a remote or local pdf document server to retrieve the pdf documents
+  */
 class LocalThumbnailServer(docServer: DocumentServer,
                            pdfDocServer : Either[URL, LocalPdfDocServer]) extends DocumentServerImpl(docServer) {
 

@@ -29,7 +29,9 @@ class LocalPdfSrcServerTest extends FlatSpec {
   val solrUrl = "http://localhost:8989/solr/pdfs2"
   val sds = new SolrDocServer(solrUrl)
   val dir = new File("pdfs2")
-  val lpds = new LocalPdfDocServer(new FSDocServer(dir))
+  val docServer = new FSDocServer(dir)
+  //val docServer = new SwayDBServer(dir)
+  val lpds = new LocalPdfDocServer(docServer)
   val lpss = new LocalPdfSrcServer(sds, lpds)
 
   it should "delete all documents and don't find then anymore" in {
