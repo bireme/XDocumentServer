@@ -7,7 +7,7 @@
 
 package org.bireme.xds.XDocServer
 
-import java.io.{ByteArrayInputStream, File}
+import java.io.{ByteArrayInputStream, File, IOException}
 
 import io.circe._
 import io.circe.parser._
@@ -21,7 +21,7 @@ class UpdateDocuments(pdfDocDir: String,
                       solrColUrl: String,
                       thumbDir: String,
                       thumbServUrl: Option[String]) {
-  val fiadminApi = "http://fi-admin.bvsalud.org/api"
+  val fiadminApi = "https://fi-admin.bvsalud.org/api"
 
   val pdfDocServer = new FSDocServer(new File(pdfDocDir))
   //val pdfDocServer = new SwayDBServer(new File(pdfDocDir))
@@ -40,14 +40,15 @@ class UpdateDocuments(pdfDocDir: String,
     assert(docId != null)
 
     getMetadata(docId) exists {
-      meta =>
+      meta: Map[String, Seq[String]] =>
         val id: Option[Seq[String]] = meta.get("id")
         val url: Option[Seq[String]] = meta.get("ur")
-        val idStr: String = id.get.head
-        val urlStr: String = url.get.head
 
         if (id.isEmpty || url.isEmpty) false
         else {
+          val idStr: String = id.get.head
+          val urlStr: String = url.get.head
+
           Tools.url2ByteArray(urlStr).exists {
             arr =>
               val bais = new ByteArrayInputStream(arr)
@@ -66,32 +67,86 @@ class UpdateDocuments(pdfDocDir: String,
     * Store only the pdfs and thumbnails that are not already stored
     */
   def addMissing(): Unit = {
-    val (bothIds, lpssIds, _) = getStoredIds(lpss, lts)
+    val (_, lpssIds, ltsIds) = getStoredIds(lpss, lts)
 
-    getMetadata(bothIds) foreach {
+    val metad = getMetadata(Set[String]())
+     metad foreach {
       meta =>
         val id: Option[Seq[String]] = meta.get("id")
         val url: Option[Seq[String]] = meta.get("ur")
 
         if (id.isEmpty && url.isEmpty) println("id and url are empty")
-        else if (id.isEmpty) println(s"---- Empty id. id=${url.get.head}")
-        else if (url.isEmpty) println(s"---- Empty url. id=${id.get.head}")
+        else if (id.isEmpty) println(s"\n--- Empty id. url=${url.get.head}")
+        else if (url.isEmpty) println(s"\n--- Empty url. id=${id.get.head}")
         else {
           val idStr: String = id.get.head
           val urlStr: String = url.get.head
+          val lpssContains = lpssIds.contains(idStr)
+          val lstContains = ltsIds.contains(idStr)
 
-          println(s"\nProcessing document:$idStr")
-          if (lpssIds.contains(idStr)) {
-            val code = lts.createDocument(idStr, urlStr, None)
-            val prefix = if (code == 201) "+++" else "---"
-            val status = if (code == 201) "OK" else "ERROR"
-            println(s"$prefix LocalThumbnailServer document creation $status. id=$idStr url=$urlStr code=$code")
-          } else {
-            val code = lpss.createDocument(idStr, urlStr, Some(meta))
-            val prefix = if (code == 201) "+++" else "---"
-            val status = if (code == 201) "OK" else "ERROR"
-            println(s"$prefix LocalPdfSrcServer document creation $status. id=$idStr url=$urlStr code=$code")
+          if (!lpssContains || !lstContains) {
+            println(s"\nProcessing document:$idStr")
+            if (!lpssContains) {
+              val code = lpss.createDocument(idStr, urlStr, Some(meta))
+              val prefix = if (code == 201) "+++" else "---"
+              val status = if (code == 201) "OK" else "ERROR"
+              println(s"$prefix LocalPdfSrcServer document creation $status. id=$idStr url=$urlStr code=$code")
+            }
+            if (!lstContains) {
+              val code = lts.createDocument(idStr, urlStr, None)
+              val prefix = if (code == 201) "+++" else "---"
+              val status = if (code == 201) "OK" else "ERROR"
+              println(s"$prefix LocalThumbnailServer document creation $status. id=$idStr url=$urlStr code=$code")
+            }
           }
+        }
+    }
+  }
+
+  /**
+    * Update document whose updated_time field changed compared to FI-Admin field.
+    */
+  def updateChanged(): Unit = {
+    val (_, lpssIds, ltsIds) = getStoredIds(lpss, lts)
+    val storedIds: Set[String] = lpssIds ++ lpssIds
+
+    storedIds.foreach {
+      docId =>
+        println(s"Checking document:$docId [if changed]")
+        getMetadata(docId) match {
+          case Right(meta) =>
+            if (meta.isEmpty) {
+              if (lpssIds.contains(docId)) {
+                val code1 = lpss.deleteDocument(docId)
+                val prefix1 = if (code1 == 200) "+++" else "---"
+                val status1 = if (code1 == 200) "OK" else "ERROR"
+                println(s"$prefix1 LocalPdfSrcServer document deletion $status1. id=$docId code=$code1")
+              }
+              if (ltsIds.contains(docId)) {
+                val code2 = lts.deleteDocument(docId)
+                val prefix2 = if (code2 == 200) "+++" else "---"
+                val status2 = if (code2 == 200) "OK" else "ERROR"
+                println(s"$prefix2 LocalThumbnailServer document deletion $status2. id=$docId code=$code2")
+              }
+            } else {
+              meta.get("ud") match {
+                case Some(utime) =>
+                  lpss.getDocumentInfo(docId) match {
+                    case Right(meta2) =>
+                      meta2.get("ud") match {
+                        case Some(updTime) =>
+                          if (updTime.isEmpty || !utime.head.equals(updTime.head)) {
+                            if (updateOne(docId)) println(s"+++ document updated OK. id=$docId")
+                            else println(s"--- document updated ERROR. id=$docId")
+                          }
+                        case None => println(s"--- document 'ud' metadata missing ERROR. id=$docId code=404")
+                      }
+                    case Left(errCode) => println(s"--- document metadata ERROR. id=$docId code=$errCode")
+                  }
+                case None => println(s"--- FI-Admin document 'updated_time' metadata missing ERROR. id=$docId code=404")
+              }
+            }
+          case Left(msg) => println(s"--- FI-Admin document metadata retrieval ERROR. id=$docId code=500 msg=$msg")
         }
     }
   }
@@ -109,7 +164,7 @@ class UpdateDocuments(pdfDocDir: String,
         val url: Option[Seq[String]] = meta.get("ur")
 
         if (id.isEmpty && url.isEmpty) println("id and url are empty")
-        else if (id.isEmpty) println(s"---- Empty id. id=${url.get.head}")
+        else if (id.isEmpty) println(s"---- Empty id. url=${url.get.head}")
         else if (url.isEmpty) println(s"---- Empty url. id=${id.get.head}")
         else {
           val idStr: String = id.get.head
@@ -130,19 +185,19 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   /**
-    * Get the ids that are stored at LocalPdfSrcServer and/or at LocalThumbnailServer
+    * Get the ids that are stored at LocalPdfSrcServer and at LocalThumbnailServer
     * @param lpss the LocalPdfSrcServer object
     * @param lts the LocalThumbnailServer object
-    * @return a triple of (ids stored at both LocalPdfSrcServer and LocalThumbnailServer,
-    *                      ids only stored at LocalPdfSrcServer,
-    *                      ids only stored at LocalThumbnailServer)
+    * @return a triple of (ids stored at LocalPdfSrcServer and LocalThumbnailServer,
+    *                      ids stored at LocalPdfSrcServer,
+    *                      ids stored at LocalThumbnailServer)
     */
   private def getStoredIds(lpss: LocalPdfSrcServer,
                            lts: LocalThumbnailServer): (Set[String], Set[String], Set[String]) = {
     val docs1 = lpss.getDocuments
     val docs2 = lts.getDocuments
 
-    (docs1.intersect(docs2), docs1.diff(docs2), docs2.diff(docs1))
+    (docs1.intersect(docs2), docs1, docs2)
   }
 
   private def getMetadata(storedIds: Set[String]): Seq[Map[String,Seq[String]]] = {
@@ -179,18 +234,21 @@ class UpdateDocuments(pdfDocDir: String,
     }
   }
 
-  private def getMetadata(docId: String): Option[Map[String,Seq[String]]] = {
+  private def getMetadata(docId: String): Either[String, Map[String,Seq[String]]] = {
     Try {
       val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&status=1&limit=1&format=json", "utf-8")
-      val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
+      val content: String = src.getLines().mkString("\n").trim
       src.close()
-      doc
+
+      if (content.startsWith("{\"error\"")) throw new IOException(content)
+      parse(content)
     } match {
       case Success(json) => json match {
-        case Right(js: Json) => getMetadata(js.hcursor.downField("objects").downArray.first)
-        case Left(_) => None
+        case Right(js: Json) => Right(getMetadata(js.hcursor.downField("objects").downArray.first)
+                                      .getOrElse(Map[String,Seq[String]]()))
+        case Left(ex) => Left(ex.toString)
       }
-      case Failure(x) => println(x);None
+      case Failure(ex) => Left(ex.toString)
     }
   }
 
@@ -279,7 +337,8 @@ class UpdateDocuments(pdfDocDir: String,
     } match {
       case Success(json: Either[ParsingFailure, Json]) =>
         json match {
-          case Right(js) => Some(getCommunityIds(js.hcursor.downField("objects").downArray.first, Set[String]()))
+          case Right(js) =>
+            Some(getCommunityIds(js.hcursor.downField("objects").downArray.first, Set[String]()))
           case Left(_) => None
         }
       case Failure(_) => None
@@ -535,7 +594,8 @@ object UpdateDocuments extends App {
         "\n\t-solrColUrl=<url> - solr collection url. For ex: http://localhost:8983/solr/pdfs" +
         "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
         "\n\t[-docId=<id>] - update only one document whose id is <id>. if used, --onlyMissing parameter will br ignored" +
-        "\n\t[--onlyMissing] - if present, will create pdf/thumbnail files only if they were not already created"
+        "\n\t[--addMissing] - if present, will create pdf/thumbnail files only if they were not already created" +
+        "\n\t[--updateChanged] - if present, will update pdf/thumbnail files whose metadata changed in the FI-Admin"
     )
     System.exit(1)
   }
@@ -565,14 +625,20 @@ object UpdateDocuments extends App {
     case None =>  "http://thumbnailserver.bvsalud.org/getDocument/"
   }
   val docId = parameters.get("docId").map(_.trim)
-  val onlyMissing = parameters.contains("onlyMissing")
+  val addMissing = parameters.contains("addMissing")
+  val updChanged = parameters.contains("updateChanged")
   val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, Some(thumbServUrl))
 
   docId match {
     case Some(did) =>
       updDocuments.updateOne(did)
     case None =>
-      if (onlyMissing) updDocuments.addMissing()
-      else updDocuments.addAll()
+      val addAll: Boolean = !(addMissing || updChanged)
+
+      if (addAll) updDocuments.addAll()
+      else {
+        if (addMissing) updDocuments.addMissing()
+        if (updChanged) updDocuments.updateChanged()
+      }
   }
 }

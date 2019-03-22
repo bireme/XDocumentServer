@@ -8,7 +8,7 @@
 package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayOutputStream, File, InputStream}
-import java.net.{URI, URL, URLConnection, URLDecoder}
+import java.net._
 import java.text.Normalizer
 import java.text.Normalizer.Form
 
@@ -73,8 +73,8 @@ object Tools {
       }
     } match {
       case Success(is) => Some(is)
-      case Failure(_) =>
-        println(s"--- Downloading error. url:$url")
+      case Failure(ex) =>
+        println(s"--- Downloading error. url:$url msg:${ex.toString}")
         None
     }
   }
@@ -148,6 +148,7 @@ object Tools {
     val url = new URL(URLDecoder.decode(surl, "utf-8"))     // To avoid double encoding
     val uri = new URI(url.getProtocol, url.getUserInfo, url.getHost,
                       url.getPort, url.getPath, url.getQuery, url.getRef)
+    //url.getPort, URLEncoder.encode(url.getPath, "utf-8"), url.getQuery, url.getRef)
      uri.toURL.toString  // Do not treat # in the URLpath
   }
 }

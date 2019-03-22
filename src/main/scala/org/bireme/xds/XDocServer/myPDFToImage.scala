@@ -42,7 +42,9 @@ object myPDFToImage {
       else None
     } match {
       case Success(opt) => opt
-      case Failure(_) => None
+      case Failure(ex) =>
+        println(s"--- PDFToImage convertion ERROR: $ex")
+        None
     }
   }
 }
