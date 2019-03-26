@@ -57,17 +57,10 @@ object Tools {
     * @return the output imput stream
     */
   def url2InputStream(url: String): Option[InputStream] = {
-    val timeout = 4 * 60 * 1000
-
     Try {
-      val url1 = new  URL(urlEncode(url))
+      val url1: URL = new URL(urlEncode(url))
       url1.getProtocol match {
-        case "http" | "https" =>
-          val conn: URLConnection = url1.openConnection()
-
-          conn.setConnectTimeout(timeout)
-          conn.setReadTimeout(timeout)
-          conn.getInputStream
+        case "http" | "https" => getInputStream(url1)
         case "ftp" => url1.openStream()
         case _ => throw new IllegalArgumentException("protocol")
       }
@@ -76,6 +69,26 @@ object Tools {
       case Failure(ex) =>
         println(s"--- Downloading error. url:$url msg:${ex.toString}")
         None
+    }
+  }
+
+  private def getInputStream(url: URL): InputStream = {
+    val timeout = 4 * 60 * 1000
+    val conn: HttpURLConnection = url.openConnection().asInstanceOf[HttpURLConnection]
+
+    conn.setConnectTimeout(timeout)
+    conn.setReadTimeout(timeout)
+    conn.setInstanceFollowRedirects(false)   // Make the logic below easier to detect redirections
+    conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+
+    conn.getResponseCode match {
+      case HttpURLConnection.HTTP_MOVED_PERM | HttpURLConnection.HTTP_MOVED_TEMP =>
+        val location: String = conn.getHeaderField("Location")
+        val location2: String = URLDecoder.decode(location, "UTF-8")
+        val next: URL = new URL(url, location2)  // Deal with relative URLs
+        val url2: String = next.toExternalForm
+        getInputStream(new URL(url2))
+      case _ => conn.getInputStream
     }
   }
 
