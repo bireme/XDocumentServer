@@ -19,8 +19,9 @@ class PdfUpdVerticle(pdfDocDir: String,
 
     eb.consumer("org.bireme.xds.UpdateDocuments.upd",
       (message: io.vertx.scala.core.eventbus.Message[String]) => {
-        println("Processing update request...")
         val id = message.body()
+        println(s"Processing update request id=$id")
+
         if (solrColUrl.isDefined && thumbDir.isDefined) {
           val updDocs = new UpdateDocuments(pdfDocDir, solrColUrl.get, thumbDir.get, None)
           if (!updDocs.updateOne(id)) {

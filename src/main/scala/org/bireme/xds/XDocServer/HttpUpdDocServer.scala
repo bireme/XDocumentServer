@@ -24,7 +24,9 @@ class HttpUpdDocServer(updServerPort: Int = 9393,
   val depOptions: DeploymentOptions = DeploymentOptions().setWorker(true)
   val eventBus: EventBus = vertx.eventBus()
   val router: Router = Router.router(vertx)
+  val routeHello: Route = router.route(HttpMethod.GET, "/").blockingHandler(handleHello)
   val routeGet: Route = router.route(HttpMethod.GET, "/updDocServer/updDocument").blockingHandler(handleGetDocument)
+  val routeGetRest: Route = router.route(HttpMethod.GET, "/updDocServer/updDocument/:id").blockingHandler(handleGetDocument)
   val myVerticle = new PdfUpdVerticle(pdfDocDir, solrColUrl, thumbDir)
 
   implicit val executionContext: VertxExecutionContext = VertxExecutionContext(vertx.getOrCreateContext())
@@ -33,6 +35,11 @@ class HttpUpdDocServer(updServerPort: Int = 9393,
   server.requestHandler(router.accept _)
   server.listen()
   println(s"HttpUpdDocServer is listening port: $updServerPort")
+
+  private def handleHello(routingContext: RoutingContext): Unit = {
+    val response: HttpServerResponse = routingContext.response().putHeader("content-type", "text/plain")
+    response.setStatusCode(200).end("HttpUpdDocServer is ok!")
+  }
 
   private def handleGetDocument(routingContext: RoutingContext): Unit = {
     val request: HttpServerRequest = routingContext.request()

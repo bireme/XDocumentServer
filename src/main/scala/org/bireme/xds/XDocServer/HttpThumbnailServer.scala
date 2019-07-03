@@ -25,12 +25,18 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
   val options: HttpServerOptions = HttpServerOptions().setPort(thumbnailServerPort).setLogActivity(true)
   var server: HttpServer = vertx.createHttpServer(options)
   val router: Router = Router.router(vertx)
+  val routeHello: Route = router.route(HttpMethod.GET, "/").blockingHandler(handleHello)
   val routeGet: Route = router.route(HttpMethod.GET, "/thumbnailServer/getDocument").blockingHandler(handleGetDocument)
   val routeGetRest: Route = router.route(HttpMethod.GET, "/thumbnailServer/getDocument/:id").blockingHandler(handleGetDocumentRest)
   val routeDelete: Route = router.route(HttpMethod.GET, "/thumbnailServer/deleteDocument").blockingHandler(handleDeleteDocument)
   server.requestHandler(router.accept _)
   server.listen()
   println(s"ThumbnailServer is listening port: $thumbnailServerPort")
+
+  private def handleHello(routingContext: RoutingContext): Unit = {
+    val response: HttpServerResponse = routingContext.response().putHeader("content-type", "text/plain")
+    response.setStatusCode(200).end("HttpThumbnailServer is ok!")
+  }
 
   private def handleGetDocument(routingContext: RoutingContext): Unit = {
     val request: HttpServerRequest = routingContext.request()
@@ -68,9 +74,9 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
       //Pump.pump(request, response).start()
 
       val headers = request.headers()
-      headers.names.foreach {
+      /*headers.names.foreach {
         name => println(s"key=$name values=${headers.getAll(name)}")
-      }
+      }*/
 
       localThumbnailServer.getDocument(id.get, None) match {
         case Right(is) =>
@@ -80,7 +86,7 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
             response.
               putHeader("Date", "Tue, 07 Nov 2018 11:23:26 GMT").
               putHeader("Server", "Apache/2.2.13 (Red Hat)").
-              putHeader("Last-Modified:", "Mon, 20 Aug 2018 20:43:26 GMT").
+              //putHeader("Last-Modified:", "Mon, 20 Aug 2018 20:43:26 GMT").
               putHeader("ETag", "\"7b41a7-c574-573e3f6075780\"").
               putHeader("Accept-Ranges", "bytes").
               putHeader("Content-Length", arr.length.toString).
@@ -92,7 +98,7 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
             response.write(Buffer.buffer(arr))
           } match {
             case Success(_) => response.setStatusCode(304).end()
-            case Failure(_) => response.setStatusCode(500).end("Error code: 500")
+            case Failure(ex) => response.setStatusCode(500).end(s"Error code: 500. [${ex.getMessage}]")
           }
         case Left(err) => response.setStatusCode(err).end(s"Error code: $err")
       }
@@ -146,7 +152,7 @@ object HttpThumbnailServer extends App {
   //val documentServer = new SwayDBServer(new File(parameters("thumbDir")))
   val localThumbnailServer: LocalThumbnailServer = parameters.get("pdfDir") match {
     case Some(pdfDir) =>
-      val pdfDocServer = new FSDocServer(new File(parameters(pdfDir)))
+      val pdfDocServer = new FSDocServer(new File(pdfDir))
       //val pdfDocServer = new SwayDBServer(new File(parameters(pdfDir)))
       new LocalThumbnailServer(documentServer, Right(new LocalPdfDocServer(pdfDocServer)))
     case None => parameters.get("pdfDocServer") match {
