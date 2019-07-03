@@ -73,8 +73,8 @@ class HttpThumbnailServer(localThumbnailServer: LocalThumbnailServer,
       //response.setChunked(true)
       //Pump.pump(request, response).start()
 
-      val headers = request.headers()
-      /*headers.names.foreach {
+      /*val headers = request.headers()
+      headers.names.foreach {
         name => println(s"key=$name values=${headers.getAll(name)}")
       }*/
 
