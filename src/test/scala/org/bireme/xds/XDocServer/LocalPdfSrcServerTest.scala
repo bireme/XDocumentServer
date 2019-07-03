@@ -26,7 +26,8 @@ class LocalPdfSrcServerTest extends FlatSpec {
       "LIVRO DE RECURSOS DA OMS SOBRE SAÚDE MENTAL, DIREITOS HUMANOS E LEGISLAÇÃO", "2005")
   )
 
-  val solrUrl = "http://localhost:8989/solr/pdfs2"
+  //val solrUrl = "http://localhost:8989/solr/pdfs2"
+  val solrUrl = "http://localhost:9292/solr/pdfs2"
   val sds = new SolrDocServer(solrUrl)
   val dir = new File("pdfs2")
   val docServer = new FSDocServer(dir)
@@ -48,7 +49,7 @@ class LocalPdfSrcServerTest extends FlatSpec {
                   case Left(err) => err == 404
                   case Right(_)  => false
                 }
-              case 400 => true
+              case 404 => true
               case _   => false
             }
         }
@@ -59,15 +60,15 @@ class LocalPdfSrcServerTest extends FlatSpec {
 
   //createDocument(id: String,
   //               source: InputStream,
-  //               info: Option[Map[String, Seq[String]]] = None): Int
+  //               info: Option[Map[String, Set[String]]] = None): Int
 
   "The local pdf search server" should "create 2 Lucene documents using createDocument (using inputStream)" in {
     assert(
       parameters.take(2).forall {
         param: (String, String, String, String) =>
-          val fldNames: Seq[String] = Seq("id", "ur", "ti", "ud")
-          val lst: Seq[String] = param.productIterator.toList.map(_.toString)
-          val info: Map[String, Seq[String]] = fldNames.zip(lst).toMap.map(kv => kv._1 -> Seq(kv._2))
+          val fldNames: Set[String] = Set("id", "ur", "ti", "ud")
+          val lst: Set[String] = param.productIterator.map(_.toString).toSet
+          val info: Map[String, Set[String]] = fldNames.zip(lst).toMap.map(kv => kv._1 -> Set(kv._2))
 
           Tools.url2InputStream(param._2) exists {
             is =>
@@ -81,15 +82,15 @@ class LocalPdfSrcServerTest extends FlatSpec {
 
   //createDocument(id: String,
   //               url: String,
-  //               info: Option[Map[String, Seq[String]]]): Int
+  //               info: Option[Map[String, Set[String]]]): Int
 
   "The local pdf search server" should "create the other Lucene documents using createDocument (using url)" in {
     assert(
       parameters.drop(2).forall {
         param =>
-          val fldNames: Seq[String] = Seq("id", "ur", "ti", "ud")
-          val lst: Seq[String] = param.productIterator.toList.map(_.toString)
-          val info: Map[String, Seq[String]] = fldNames.zip(lst).toMap.map(kv => kv._1 -> Seq(kv._2))
+          val fldNames: Set[String] = Set("id", "ur", "ti", "ud")
+          val set: Set[String] = param.productIterator.map(_.toString).toSet
+          val info: Map[String, Set[String]] = fldNames.zip(set).toMap.map(kv => kv._1 -> Set(kv._2))
 
           lpss.createDocument(param._1, param._2, Some(info)) equals 201
       }
@@ -111,7 +112,8 @@ class LocalPdfSrcServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          val omap: Map[String, Seq[String]] = Map("ur" -> Seq(param._2.trim), "ti" -> Seq(param._3.trim), "ud" -> Seq(param._4.trim))
+          val omap: Map[String, Set[String]] = Map("ur" -> Set(param._2.trim), "ti" -> Set(param._3.trim),
+                                                   "ud" -> Set(param._4.trim))
 
           lpss.getDocumentInfo(param._1) exists {
             map =>

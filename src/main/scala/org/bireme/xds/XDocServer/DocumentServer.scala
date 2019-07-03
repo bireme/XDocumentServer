@@ -32,7 +32,7 @@ trait DocumentServer {
     */
   def createDocument(id: String,
                      source: InputStream,
-                     info: Option[Map[String, Seq[String]]] = None): Int
+                     info: Option[Map[String, Set[String]]] = None): Int
 
   /**
     * Store a new document
@@ -43,7 +43,7 @@ trait DocumentServer {
     */
   def createDocument(id: String,
                      url: String,
-                     info: Option[Map[String, Seq[String]]]): Int
+                     info: Option[Map[String, Set[String]]]): Int
 
   /**
     * Replace a stored document if there is some or create a new one otherwise
@@ -54,7 +54,7 @@ trait DocumentServer {
     */
   def replaceDocument(id: String,
                       source: InputStream,
-                      info: Option[Map[String, Seq[String]]] = None): Int
+                      info: Option[Map[String, Set[String]]] = None): Int
 
   /**
     * Replace a stored document if there is some or create a new one otherwise
@@ -65,7 +65,7 @@ trait DocumentServer {
     */
   def replaceDocument(id: String,
                       url: String,
-                      info: Option[Map[String, Seq[String]]]): Int
+                      info: Option[Map[String, Set[String]]]): Int
 
   /**
     * Delete a stored document
@@ -85,7 +85,7 @@ trait DocumentServer {
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)
     */
-  def getDocumentInfo(id: String): Either[Int, Map[String, Seq[String]]]
+  def getDocumentInfo(id: String): Either[Int, Map[String, Set[String]]]
 
   /**
     * Create a metadata for the document
@@ -96,5 +96,5 @@ trait DocumentServer {
     */
   def createDocumentInfo(id: String,
                          source: Option[InputStream],
-                         info: Option[Map[String, Seq[String]]]): Map[String, Seq[String]]
+                         info: Option[Map[String, Set[String]]]): Map[String, Set[String]]
 }

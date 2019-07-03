@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 
+WHOAMI=`whoami`
+if [ "$WHOAMI" != "operacao" ]
+  then
+    echo "You should execute this shell as 'operacao' user"
+    exit 1
+fi
+
+XDOCSERVER_HOME=/home/javaapps/sbt-projects/XDocumentServer
+
 # Vai para diretório da aplicação XDocumentServer
-cd /home/javaapps/sbt-projects/XDocumentServer/
+cd $XDOCSERVER_HOME
 
 # Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa somente os documentos pdfs não armazenados
-FULL_INDEXING=1
+FULL_INDEXING=0
 
 JAVA_HOME=/usr/local/oracle-8-jdk
 J2SDKDIR=${JAVA_HOME}
@@ -54,7 +63,7 @@ fi
 
 # Gera os arquivos pdfs e thumbnails e o índice lucene
 if [ "$FULL_INDEXING" -eq 0 ]; then
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --onlyMissing --updateChanged" > log.txt
+  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > log.txt
   ret="$?"
 else
   bin/delstart.sh  # Reinicializa o índice pdfs e o servidor (que pode ficar com o índice em memória)
@@ -64,11 +73,20 @@ fi
 
 # Se ocorreu erro restaura situação anterior, manda email e sai
 if [ "$ret" -ne 0 ]; then
+  if [ -e "pdfs" ]; then
+    rm -r pdfs
+  fi
   if [ -e "old/pdfs" ]; then
     mv old/pdfs .
   fi
+  if [ -e "thumbnails" ]; then
+    rm -r thumbnails
+  fi
   if [ -e "old/thumbnails" ]; then
     mv old/thumbnails .
+  fi
+  if [ -e "${COL_DIR}/pdfs" ]; then
+    rm -r  ${COL_DIR}/pdfs
   fi
   if [ -e "old/index/pdfs" ]; then
     mv old/index/pdfs ${COL_DIR}
@@ -83,11 +101,20 @@ hitsLocal="$?"
 
 # Se ocorreu erro restaura situação anterior, manda email e sai
 if [ "$hitsLocal" -eq 0 ]; then
+  if [ -e "pdfs" ]; then
+    rm -r pdfs
+  fi
   if [ -e "old/pdfs" ]; then
     mv old/pdfs .
   fi
+  if [ -e "thumbnails" ]; then
+    rm -r thumbnails
+  fi
   if [ -e "old/thumbnails" ]; then
     mv old/thumbnails .
+  fi
+  if [ -e "${COL_DIR}/pdfs" ]; then
+    rm -r  ${COL_DIR}/pdfs
   fi
   if [ -e "old/index/pdfs" ]; then
     mv old/index/pdfs ${COL_DIR}
@@ -250,6 +277,6 @@ fi
 cd -
 
 # Manda email avisando que a geração ocorreu corretamente
-sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents finished - `date '+%Y-%m-%d'`" -m "XDocumentServer - Processo de geracao de pdfs e/ou thumbnails finalizou corretamente" -a log.txt -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents finished - `date '+%Y-%m-%d'`" -m "XDocumentServer - Processo de geracao de pdfs e/ou thumbnails finalizou corretamente" -a $XDOCSERVER_HOME/log.txt -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
 
 exit 0

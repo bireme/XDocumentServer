@@ -53,27 +53,28 @@ object Tools {
 
   /**
     * Comvert an url into a input stream
-    * @param url input url string
+    * @param urls input url string
     * @return the output imput stream
     */
-  def url2InputStream(url: String): Option[InputStream] = {
+  def url2InputStream(urls: String): Option[InputStream] = {
     Try {
-      val url1: URL = new URL(urlEncode(url))
-      url1.getProtocol match {
-        case "http" | "https" => getInputStream(url1)
-        case "ftp" => url1.openStream()
+      val url: URL = new URL(urls)
+      url.getProtocol match {
+        case "http" | "https" => getHttpInputStream(urls)
+        case "ftp" => url.openStream()
         case _ => throw new IllegalArgumentException("protocol")
       }
     } match {
       case Success(is) => Some(is)
       case Failure(ex) =>
-        println(s"--- Downloading error. url:$url msg:${ex.toString}")
+        println(s"--- Downloading error. url:$urls msg:${ex.toString}")
         None
     }
   }
 
-  private def getInputStream(url: URL): InputStream = {
+  private def getHttpInputStream(urls: String): InputStream = {
     val timeout = 4 * 60 * 1000
+    val url: URL = new URL(urlEncode(urls))
     val conn: HttpURLConnection = url.openConnection().asInstanceOf[HttpURLConnection]
 
     conn.setConnectTimeout(timeout)
@@ -85,20 +86,24 @@ object Tools {
       case HttpURLConnection.HTTP_MOVED_PERM | HttpURLConnection.HTTP_MOVED_TEMP =>
         val location: String = conn.getHeaderField("Location")
         val location2: String = URLDecoder.decode(location, "UTF-8")
+        val original: String = URLDecoder.decode(urls, "UTF-8")
+        if (location2.equals(original)) {
+          throw new Exception("invalid redirection")
+        }
         val next: URL = new URL(url, location2)  // Deal with relative URLs
         val url2: String = next.toExternalForm
-        getInputStream(new URL(url2))
+        getHttpInputStream(url2)
       case _ => conn.getInputStream
     }
   }
 
   /**
     * Convert an url into a byte array
-    * @param url the input url string
+    * @param urls the input url string
     * @return the output byte array
     */
-  def url2ByteArray(url: String): Option[Array[Byte]] = {
-    url2InputStream(url).flatMap {
+  def url2ByteArray(urls: String): Option[Array[Byte]] = {
+    url2InputStream(urls).flatMap {
       is =>
         val arr: Option[Array[Byte]] = inputStream2Array(is)
         is.close()
@@ -134,7 +139,7 @@ object Tools {
     directoryToBeDeleted.delete
   }
 
-  def map2String(map: Map[String,Seq[String]]): String = {
+  def map2String(map: Map[String,Set[String]]): String = {
     map.foldLeft("") {
       case (str, kv) => kv._2.foldLeft(str) {
         case (str2, value) => str2 + (if (str.isEmpty) "" else "ºº") + s"${kv._1.trim}=${value.trim}"
@@ -142,13 +147,13 @@ object Tools {
     }
   }
 
-  def string2Map(str: String): Map[String, Seq[String]] = {
-    str.split("ºº").foldLeft(Map[String, Seq[String]]()) {
+  def string2Map(str: String): Map[String, Set[String]] = {
+    str.split("ºº").foldLeft(Map[String, Set[String]]()) {
       case (mp, x) =>
         val split: Array[String] = x.split("=")
         val key: String = split(0)
-        val seq: Seq[String] = mp.getOrElse(key, Seq[String]())
-        mp + (key -> (seq :+ split(1)))
+        val set: Set[String] = mp.getOrElse(key, Set[String]())
+        mp + (key -> (set + split(1)))
     }
   }
 
@@ -157,11 +162,67 @@ object Tools {
     * @param surl input url string to encode
     * @return the encoded url
     */
-  def urlEncode(surl: String): String = {
+  def urlEncode0(surl: String): String = {
     val url = new URL(URLDecoder.decode(surl, "utf-8"))     // To avoid double encoding
     val uri = new URI(url.getProtocol, url.getUserInfo, url.getHost,
                       url.getPort, url.getPath, url.getQuery, url.getRef)
     //url.getPort, URLEncoder.encode(url.getPath, "utf-8"), url.getQuery, url.getRef)
      uri.toURL.toString  // Do not treat # in the URLpath
+  }
+
+  def urlEncode(urls: String,
+                encod: String = "utf-8"): String = {
+    val url = new URL(URLDecoder.decode(urls, encod))
+    val protocol = url.getProtocol
+    val authority = url.getAuthority
+    val path = encodePath(url.getPath, encod)
+    val query = url.getQuery
+    val query2 = if (query == null) "" else s"?${encodeQuery(query, encod)}"
+    val fragment = url.getRef
+    val fragment2 = if (fragment == null) "" else s"#${encodeFragment(fragment, encod)}"
+
+    protocol + "://" + authority + path + query2 + fragment2
+  }
+
+  def encodePath(path: String,
+                 encod: String): String = {
+    val split = path.split("/", 100)
+
+    split.map(URLEncoder.encode(_, encod)).map(_.replace("+", "%20")).mkString("/")
+  }
+
+  def encodeQuery(query: String,
+                  encod: String): String = { // xxx=yyy&www=zzz
+    def encodeQueryPart(part: String): String = {  // xxx=yyy
+      val split = part.split("=")
+      if (split.length != 2) throw new IllegalArgumentException(part)
+
+      split.map(URLEncoder.encode(_, encod)).mkString("=")
+    }
+
+    val amp = query.split("&")
+
+    amp.map(encodeQueryPart).mkString("&")
+  }
+
+  def encodeFragment(fragment: String,
+                     encod: String): String = {
+    URLEncoder.encode(fragment, encod).replace("+", "%20")
+  }
+
+  /**
+  * Given two info structures (map), combine then into a only one
+    * @param info1 - first info structure
+    * @param info2 - second info structure
+    * @return the merged info structure
+    */
+  def mergeInfo(info1: Map[String, Set[String]],
+                info2: Map[String, Set[String]]): Map[String, Set[String]] = {
+    info1.foldLeft(info2) {
+      case (inf2, kv1:(String,Set[String])) => inf2.get(kv1._1) match {
+        case Some(seq2: Set[String]) => inf2 + (kv1._1 -> (kv1._2 ++ seq2))
+        case None => inf2 + (kv1._1 -> kv1._2)
+      }
+    }
   }
 }

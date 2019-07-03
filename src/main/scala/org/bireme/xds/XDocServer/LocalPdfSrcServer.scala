@@ -74,29 +74,41 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
     */
   override def createDocument(id: String,
                               url: String,
-                              info: Option[Map[String,Seq[String]]]): Int = {
-    pdfDocServer.getDocument(id) match {
-      case Right(_) => 409
+                              info: Option[Map[String,Set[String]]]): Int = {
+    val newInfo: Option[Map[String,Set[String]]] = pdfDocServer.getDocumentInfo(id) match {
+      case Right(originalInfo: Map[String, Set[String]]) =>
+        info match {
+          case Some(inf) =>
+            val inf2 = inf.foldLeft(originalInfo) {
+              case (map, kv) =>
+                inf.get(kv._1) match {
+                  case Some(set) => map + (kv._1 -> (kv._2 ++ set))
+                  case None => map
+                }
+            }
+            Some(inf2)
+          case None => Some(originalInfo)
+        }
       case Left(err) => err match {
-        case 404 =>
-          pdfDocServer.createDocument(id, url, info.map(_ + ("url" -> Seq(url)))) match {
-            case 201 =>
-              pdfDocServer.getDocument(id) match {
-                case Right(is: InputStream) =>
-                  val is2 = new ByteArrayInputStream(Tools.inputStream2Array(is).get)
-                  is2.mark(Integer.MAX_VALUE)
-                  val info2 = Some(createDocumentInfo(id, Some(is2), info) + ("url" -> Seq(url)))
-                  is2.reset()
-                  val ret: Int = solrDocServer.createDocument(id, is2, info2)
-                  is2.close()
-                  is.close()
-                  ret
-                case Left(err2) => err2
-              }
-            case err3 => err3
-          }
-        case 500 => 500
+        case 404 => info.map(_ + ("url" -> Set(url)))
+        case 500 => None
       }
+    }
+    pdfDocServer.replaceDocument(id, url, newInfo) match {
+      case 200|201 =>
+        pdfDocServer.getDocument(id) match {
+          case Right(is: InputStream) =>
+            val is2 = new ByteArrayInputStream(Tools.inputStream2Array(is).get)
+            is2.mark(Integer.MAX_VALUE)
+            val info2 = Some(createDocumentInfo(id, Some(is2), info) + ("url" -> Set(url)))
+            is2.reset()
+            val ret: Int = solrDocServer.createDocument(id, is2, info2)
+            is2.close()
+            is.close()
+            ret
+          case Left(err2) => err2
+        }
+      case err3 => err3
     }
   }
 
@@ -109,7 +121,7 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
     */
   override def createDocument(id: String,
                               source: InputStream,
-                              info: Option[Map[String, Seq[String]]] = None): Int = {
+                              info: Option[Map[String, Set[String]]] = None): Int = {
     pdfDocServer.getDocument(id) match {
       case Right(_) => 409
       case Left(err) => err match {
@@ -143,7 +155,7 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
     */
   override def replaceDocument(id: String,
                                source: InputStream,
-                               info: Option[Map[String, Seq[String]]] = None): Int = {
+                               info: Option[Map[String, Set[String]]] = None): Int = {
     pdfDocServer.replaceDocument(id, source, info) match {
       case 500 => 500
       case _ =>
@@ -163,7 +175,7 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
     */
   def replaceDocument(id: String,
                       url: String,
-                      info: Option[Map[String, Seq[String]]]): Int = {
+                      info: Option[Map[String, Set[String]]]): Int = {
     pdfDocServer.replaceDocument(id, url, info) match {
       case 500 => 500
       case _ => solrDocServer.replaceDocument(id, url, info)
@@ -198,7 +210,7 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)
     */
-  def getDocumentInfo(id: String): Either[Int, Map[String, Seq[String]]] = solrDocServer.getDocumentInfo(id)
+  def getDocumentInfo(id: String): Either[Int, Map[String, Set[String]]] = solrDocServer.getDocumentInfo(id)
 
   /**
     * Create a metadata for the document
@@ -210,8 +222,8 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
     */
   override def createDocumentInfo(id: String,
                                   source: Option[InputStream] = None,
-                                  info: Option[Map[String, Seq[String]]] = None): Map[String, Seq[String]] = {
-    val map: Map[String, Seq[String]] = solrDocServer.createDocumentInfo(id, source, info)
+                                  info: Option[Map[String, Set[String]]] = None): Map[String, Set[String]] = {
+    val map: Map[String, Set[String]] = solrDocServer.createDocumentInfo(id, source, info)
     pdfDocServer.createDocumentInfo(id, source, Some(map))
     map
   }

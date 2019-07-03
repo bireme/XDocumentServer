@@ -38,7 +38,7 @@ class LocalPdfDocServerTest extends FlatSpec {
         param =>
           Tools.url2InputStream(param._2) exists {
             is =>
-              val map = Map("id" -> Seq(param._1), "url" -> Seq(param._2), "title" -> Seq(param._3), "year" -> Seq(param._4))
+              val map = Map("id" -> Set(param._1), "url" -> Set(param._2), "title" -> Set(param._3), "year" -> Set(param._4))
               val ret = lpds.createDocument(param._1, is, Some(map))
               is.close()
               ret == 201
@@ -62,8 +62,10 @@ class LocalPdfDocServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          val omap = Map("id" -> Seq(param._1.trim), "url" -> Seq(param._2.trim), "title" -> Seq(param._3.trim), "year" -> Seq(param._4.trim))
-          lpds.getDocumentInfo(param._1) exists (map => map.equals(omap))
+          val omap: Map[String, Set[String]] = Map("id" -> Set(param._1.trim), "url" -> Set(param._2.trim), "title" -> Set(param._3.trim), "year" -> Set(param._4.trim))
+          lpds.getDocumentInfo(param._1) exists {
+            map => (map.toSet diff omap.toSet).size == 0
+          }
       }
     )
   }
@@ -109,7 +111,7 @@ class LocalPdfDocServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          val map = Map("id" -> Seq(param._1), "url" -> Seq(param._2), "title" -> Seq(param._3), "year" -> Seq(param._4))
+          val map = Map("id" -> Set(param._1), "url" -> Set(param._2), "title" -> Set(param._3), "year" -> Set(param._4))
           lpds.getDocument(param._1, Some(param._2), Some(map)).isRight
       }
     )
@@ -118,15 +120,15 @@ class LocalPdfDocServerTest extends FlatSpec {
   it should "import a repeated pdf file using getDocument" in {
     assert {
       val param: (String, String, String, String) = parameters.head
-      val map = Map("id" -> Seq(param._1), "url" -> Seq(param._2), "title" -> Seq(param._3), "year" -> Seq(param._4))
+      val map = Map("id" -> Set(param._1), "url" -> Set(param._2), "title" -> Set(param._3), "year" -> Set(param._4))
       lpds.getDocument(param._1, Some(param._2), Some(map)).isRight
     }
   }
 
   it should "list all document identifiers - 2" in {
     assert {
-      val oids = parameters.foldLeft(Seq[String]()) {
-        case (seq, param) => seq :+ param._1
+      val oids = parameters.foldLeft(Set[String]()) {
+        case (seq, param) => seq + param._1
       }
       val ids = lpds.getDocuments
       oids.forall(id => ids.contains(id))
@@ -137,7 +139,7 @@ class LocalPdfDocServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          val omap = Map("id" -> Seq(param._1.trim), "url" -> Seq(param._2.trim), "title" -> Seq(param._3.trim), "year" -> Seq(param._4.trim))
+          val omap = Map("id" -> Set(param._1.trim), "url" -> Set(param._2.trim), "title" -> Set(param._3.trim), "year" -> Set(param._4.trim))
           lpds.getDocumentInfo(param._1) exists(map => map.equals(omap))
       }
     )

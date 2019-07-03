@@ -97,12 +97,12 @@ class SolrDocServer(url: String) extends DocumentServer {
     */
   override def createDocument(id: String,
                               source: InputStream,
-                              info: Option[Map[String, Seq[String]]]): Int = {
+                              info: Option[Map[String, Set[String]]]): Int = {
     //curl "http://localhost:8983/solr/teste1/update/extract?literal.id=doc6&defaultField=text&commit=true" --data-binary @/home/heitor/Downloads/shapeless-guide.pdf -H 'Content-type:application/pdf'
 
     //println(s"+++ indexing document id=$id")
 
-    val info2: Option[Map[String, Seq[String]]] = info.map(_ + ("id" -> Seq(id)))
+    val info2: Option[Map[String, Set[String]]] = info.map(_ + ("id" -> Set(id)))
     val parameters: List[(String, String)] = (info2 match {
       case Some(param) => param.foldLeft(List[(String,String)]()) {
         case (lst, (k,seq)) => seq.foldLeft(lst) {
@@ -156,12 +156,12 @@ class SolrDocServer(url: String) extends DocumentServer {
     */
   override def createDocument(id: String,
                               url: String,
-                              info: Option[Map[String, Seq[String]]]): Int = {
+                              info: Option[Map[String, Set[String]]]): Int = {
     //curl "http://localhost:8983/solr/teste1/update/extract?literal.id=doc6&defaultField=text&commit=true" --data-binary @/home/heitor/Downloads/shapeless-guide.pdf -H 'Content-type:application/pdf'
 
     //println(s"+++ indexing document id=$id")
 
-    val info2: Option[Map[String, Seq[String]]] = info.map(_ + ("id" -> Seq(id)))
+    val info2: Option[Map[String, Set[String]]] = info.map(_ + ("id" -> Set(id)))
     val parameters: List[(String, String)] = (info2 match {
       case Some(param) => param.foldLeft(List[(String,String)]()) {
         case (lst, (k,seq)) => seq.foldLeft(lst) {
@@ -208,7 +208,7 @@ class SolrDocServer(url: String) extends DocumentServer {
     */
   override def replaceDocument(id: String,
                                source: InputStream,
-                               info: Option[Map[String, Seq[String]]] = None): Int = {
+                               info: Option[Map[String, Set[String]]] = None): Int = {
     val del: Int = deleteDocument(id)
 
     if (del == 500) 500
@@ -225,7 +225,7 @@ class SolrDocServer(url: String) extends DocumentServer {
     */
   def replaceDocument(id: String,
                       url: String,
-                      info: Option[Map[String, Seq[String]]]): Int = {
+                      info: Option[Map[String, Set[String]]]): Int = {
     val del: Int = deleteDocument(id)
 
     if (del == 500) 500
@@ -308,7 +308,7 @@ class SolrDocServer(url: String) extends DocumentServer {
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)
     */
-  override def getDocumentInfo(id: String): Either[Int, Map[String, Seq[String]]] = {
+  override def getDocumentInfo(id: String): Either[Int, Map[String, Set[String]]] = {
     // "http://localhost:8983/solr/teste3/select?q=id:978-85-334-1911-7"
 
     Try(Http(url1 + "query").timeout(timeout, timeout).param("q", s"id:$id").asString) match {
@@ -320,14 +320,14 @@ class SolrDocServer(url: String) extends DocumentServer {
 
           doc.keys match {
             case Some(it: Iterable[String]) =>
-              Right(it.foldLeft(Map[String, Seq[String]]()) {
+              Right(it.foldLeft(Map[String, Set[String]]()) {
                 case (mp, key: String) =>
                   if (metadataFields.contains(key)) {
                     val elem = doc.downField(key)
                     elem.as[Array[String]] match {
-                      case Right(arr) => mp + (key -> arr.toSeq)
+                      case Right(arr) => mp + (key -> arr.toSet)
                       case Left(_) => elem.as[String] match {
-                        case Right(str) => mp + (key -> Seq(str))
+                        case Right(str) => mp + (key -> Set(str))
                         case Left(_) => mp
                       }
                     }
@@ -350,12 +350,12 @@ class SolrDocServer(url: String) extends DocumentServer {
     */
   override def createDocumentInfo(id: String,
                                   source: Option[InputStream],
-                                  info: Option[Map[String, Seq[String]]] = None): Map[String, Seq[String]] = {
+                                  info: Option[Map[String, Set[String]]] = None): Map[String, Set[String]] = {
     val now: Date = Calendar.getInstance().getTime
     val dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss")
     val date: String = dateFormat.format(now)
 
-    Map("id" -> Seq(id), "updated_date" -> Seq(date)) ++ info.getOrElse(Map[String, Seq[String]]())
+    Map("id" -> Set(id), "updated_date" -> Set(date)) ++ info.getOrElse(Map[String, Set[String]]())
   }
 
   private def getSolrDir: Option[String] = {

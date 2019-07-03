@@ -24,9 +24,9 @@ class PdfSrcVerticle(pdfSrcServer: LocalPdfSrcServer) extends ScalaVerticle with
       (message: io.vertx.scala.core.eventbus.Message[String]) => {
         println("Processing put request...")
         Try {
-          val mapParams: Map[String, Seq[String]] = Tools.string2Map(message.body())
-          val id: Option[Seq[String]] = mapParams.get("id")
-          val url: Option[Seq[String]] = mapParams.get("ur")
+          val mapParams: Map[String, Set[String]] = Tools.string2Map(message.body())
+          val id: Option[Set[String]] = mapParams.get("id")
+          val url: Option[Set[String]] = mapParams.get("ur")
 
           if (id.isEmpty || url.isEmpty) error("id.isEmpty || url.isEmpty")
           else {

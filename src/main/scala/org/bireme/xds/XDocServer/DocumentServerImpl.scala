@@ -34,7 +34,7 @@ class DocumentServerImpl(docServer: DocumentServer) extends DocumentServer {
     */
   override def createDocument(id: String,
                               source: InputStream,
-                              info: Option[Map[String, Seq[String]]] = None): Int =
+                              info: Option[Map[String, Set[String]]] = None): Int =
     docServer.createDocument(id, source, info)
 
   /**
@@ -46,7 +46,7 @@ class DocumentServerImpl(docServer: DocumentServer) extends DocumentServer {
     */
   override def createDocument(id: String,
                               url: String,
-                              info: Option[Map[String, Seq[String]]]): Int =
+                              info: Option[Map[String, Set[String]]]): Int =
     docServer.createDocument(id, url, info)
 
   /**
@@ -58,7 +58,7 @@ class DocumentServerImpl(docServer: DocumentServer) extends DocumentServer {
     */
   override def replaceDocument(id: String,
                                source: InputStream,
-                               info: Option[Map[String, Seq[String]]] = None): Int =
+                               info: Option[Map[String, Set[String]]] = None): Int =
     docServer.replaceDocument(id, source, info)
 
   /**
@@ -70,7 +70,7 @@ class DocumentServerImpl(docServer: DocumentServer) extends DocumentServer {
     */
   def replaceDocument(id: String,
                       url: String,
-                      info: Option[Map[String, Seq[String]]]): Int =
+                      info: Option[Map[String, Set[String]]]): Int =
     docServer.replaceDocument(id, url, info)
 
   /**
@@ -91,7 +91,7 @@ class DocumentServerImpl(docServer: DocumentServer) extends DocumentServer {
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)
     */
-  override def getDocumentInfo(id: String): Either[Int, Map[String, Seq[String]]] = docServer.getDocumentInfo(id)
+  override def getDocumentInfo(id: String): Either[Int, Map[String, Set[String]]] = docServer.getDocumentInfo(id)
 
   /**
     * Create a metadata for the document
@@ -102,11 +102,11 @@ class DocumentServerImpl(docServer: DocumentServer) extends DocumentServer {
     */
   override def createDocumentInfo(id: String,
                                   source: Option[InputStream]= None,
-                                  info: Option[Map[String, Seq[String]]] = None): Map[String, Seq[String]] = {
+                                  info: Option[Map[String, Set[String]]] = None): Map[String, Set[String]] = {
     val now: Date = Calendar.getInstance().getTime
     val dateFormat: SimpleDateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss")
     val date: String = dateFormat.format(now)
 
-    Map("id" -> Seq(id), "date" -> Seq(date)) ++ info.getOrElse(Map[String, Seq[String]]())
+    Map("id" -> Set(id), "date" -> Set(date)) ++ info.getOrElse(Map[String, Set[String]]())
   }
 }

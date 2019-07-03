@@ -2,29 +2,28 @@ lazy val root = (project in file("."))
   .settings(
     inThisBuild(List(
       organization := "org.bireme",
-      scalaVersion := "2.12.8",
+      scalaVersion := /*"2.13.0",*/ "2.12.8",
       version      := "0.1.0-SNAPSHOT"
     )),
     name := "XDocumentServer"
   )
 
-val pdfboxVersion = "2.0.14" //"2.0.12"
-val pdfboxAppVersion = "2.0.14" //"2.0.12"
+val pdfboxVersion = "2.0.15" //"2.0.14"
+val pdfboxAppVersion = "2.0.15" //"2.0.14"
 val jpef2000Version =  "1.3.0"
 val jaiImageioCoreVersion = "1.4.0"
-val sttpVersion = "1.5.11" //"1.3.9"
-val vertxVersion = "3.6.3" //"3.5.4"
-//val solrScalaClientVersion = "0.0.19"
-val solrCellVersion = "7.7.1" //7.5.0"
+val sttpVersion = "1.6.0" //"1.5.11"
+val vertxVersion = "3.7.1" // "3.6.3"
+val solrCellVersion = "8.1.1" //"7.7.1"
 val restletVersion = "2.4.0"
-val httpComponentsVersion = "4.5.7" //"4.5.6"
-val scalajHttpVersion = "2.4.1"
+val httpComponentsVersion = "4.5.9" //"4.5.7"
+val scalajHttpVersion = "2.4.2" //"2.4.1"
 val circeVersion = "0.11.1" //"0.10.0"
 val commonsIOVersion = "2.6"
 val hasherVersion = "1.2.0"
-val airframeVersion = "19.3.5" //"19.3.1"
+val airframeVersion = "19.6.1" //"19.3.5"
 val hairyfotrVersion = "0.1.17"
-val scalaTestVersion = "3.0.7" //"3.0.6"
+val scalaTestVersion = "3.0.8" //"3.0.7"
 val swaydbVersion = /*"0.7.1"*/ "0.6"
 
 resolvers += "Restlet Repositories" at "http://maven.restlet.org"

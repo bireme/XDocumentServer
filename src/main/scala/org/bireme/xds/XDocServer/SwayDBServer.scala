@@ -59,7 +59,7 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
     */
   override def createDocument(id: String,
                               source: InputStream,
-                              info: Option[Map[String, Seq[String]]] = None): Int = {
+                              info: Option[Map[String, Set[String]]] = None): Int = {
     val idT: String = id.trim
 
     db.contains(idT) match {
@@ -95,7 +95,7 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
     */
   override def createDocument(id: String,
                               url: String,
-                              info: Option[Map[String, Seq[String]]]): Int = {
+                              info: Option[Map[String, Set[String]]]): Int = {
     val idT: String = id.trim
 
     db.contains(idT) match {
@@ -106,7 +106,7 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
             case Some(arr) =>
               db.put(idT, arr) match {
                 case Success(_) =>
-                  val inf = info.getOrElse(createDocumentInfo(idT, source = None, info = None) + ("url" -> Seq(url)))
+                  val inf = info.getOrElse(createDocumentInfo(idT, source = None, info = None) + ("url" -> Set(url)))
                   dbInfo.put(idT, Tools.map2String(inf)) match {
                     case Success(_) => 201
                     case Failure(_) => 500
@@ -129,7 +129,7 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
     */
   override def replaceDocument(id: String,
                                source: InputStream,
-                               info: Option[Map[String, Seq[String]]] = None): Int = {
+                               info: Option[Map[String, Set[String]]] = None): Int = {
     deleteDocument(id) match {
       case 200 =>
         createDocument(id, source, info) match {
@@ -149,7 +149,7 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
     */
   override def replaceDocument(id: String,
                                url: String,
-                               info: Option[Map[String, Seq[String]]]): Int = {
+                               info: Option[Map[String, Set[String]]]): Int = {
     deleteDocument(id) match {
       case 200 =>
         createDocument(id, url, info) match {
@@ -205,7 +205,7 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)
     */
-  override def getDocumentInfo(id: String): Either[Int, Map[String, Seq[String]]] = {
+  override def getDocumentInfo(id: String): Either[Int, Map[String, Set[String]]] = {
     dbInfo.get(id.trim) match {
       case Success(strOpt) =>
         strOpt match {
@@ -225,11 +225,11 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
     */
   override def createDocumentInfo(id: String,
                                   source: Option[InputStream] = None,
-                                  info: Option[Map[String, Seq[String]]] = None): Map[String, Seq[String]] = {
+                                  info: Option[Map[String, Set[String]]] = None): Map[String, Set[String]] = {
     val now: Date = Calendar.getInstance().getTime
     val dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss")
     val date: String = dateFormat.format(now)
 
-    Map("id" -> Seq(id), "date" -> Seq(date)) ++ info.getOrElse(Map[String, Seq[String]]())
+    Map("id" -> Set(id), "date" -> Set(date)) ++ info.getOrElse(Map[String, Set[String]]())
   }
 }

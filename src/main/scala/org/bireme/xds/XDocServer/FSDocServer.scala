@@ -58,7 +58,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     */
   override def createDocument(id: String,
                               source: InputStream,
-                              info: Option[Map[String, Seq[String]]] = None): Int = {
+                              info: Option[Map[String, Set[String]]] = None): Int = {
     val idT: String = id.trim
     val dir = new File(rootDir, idT)
     val file = new File(dir, idT)
@@ -87,7 +87,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     */
   override def createDocument(id: String,
                               url: String,
-                              info: Option[Map[String, Seq[String]]]): Int = {
+                              info: Option[Map[String, Set[String]]]): Int = {
     val idT: String = id.trim
     val dir = new File(rootDir, idT)
     val file = new File(dir, idT)
@@ -106,7 +106,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
               fos.close()
               writeDocInfo(
                 infoFile,
-                info.getOrElse(createDocumentInfo(idT) + ("url" -> Seq(url)))
+                info.getOrElse(createDocumentInfo(idT) + ("url" -> Set(url)))
               )
             }
           case None => 500
@@ -127,7 +127,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     */
   override def replaceDocument(id: String,
                                source: InputStream,
-                               info: Option[Map[String, Seq[String]]] = None): Int = {
+                               info: Option[Map[String, Set[String]]] = None): Int = {
     deleteDocument(id) match {
       case 500 => 500
       case _ => createDocument(id, source, info)
@@ -143,7 +143,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     */
   override def replaceDocument(id: String,
                                url: String,
-                               info: Option[Map[String, Seq[String]]]): Int = {
+                               info: Option[Map[String, Set[String]]]): Int = {
     deleteDocument(id) match {
       case 500 => 500
       case _ =>
@@ -188,7 +188,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)
     */
-  override def getDocumentInfo(id: String): Either[Int, Map[String, Seq[String]]] = {
+  override def getDocumentInfo(id: String): Either[Int, Map[String, Set[String]]] = {
     val idT: String = id.trim
     val dir = new File(rootDir, idT)
     val info = new File(dir, s"$idT.info")
@@ -196,7 +196,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     if (info.isFile || info.canRead) {
       Try {
         val src: BufferedSource = Source.fromFile(info, "utf-8")
-        val map: Map[String, Seq[String]] = src.getLines().foldLeft[Map[String, Seq[String]]](Map()) {
+        val map: Map[String, Set[String]] = src.getLines().foldLeft[Map[String, Set[String]]](Map()) {
           case (mp, line) =>
             val lineT = line.trim
             if (lineT.isEmpty) mp
@@ -204,8 +204,8 @@ class FSDocServer(rootDir: File) extends DocumentServer {
               val split = lineT.split(" *= *", 2)
               if (split.size == 2) {
                 val key: String = split(0)
-                val seq: Seq[String] = mp.getOrElse(key, Seq[String]())
-                mp + (key -> (seq :+ split(1)))
+                val set: Set[String] = mp.getOrElse(key, Set[String]())
+                mp + (key -> (set + split(1)))
               } else mp
             }
         }
@@ -227,16 +227,16 @@ class FSDocServer(rootDir: File) extends DocumentServer {
     */
   override def createDocumentInfo(id: String,
                                   source: Option[InputStream] = None,
-                                  info: Option[Map[String, Seq[String]]] = None): Map[String, Seq[String]] = {
+                                  info: Option[Map[String, Set[String]]] = None): Map[String, Set[String]] = {
     val now: Date = Calendar.getInstance().getTime
     val dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss")
     val date: String = dateFormat.format(now)
 
-    Map("id" -> Seq(id), "date" -> Seq(date)) ++ info.getOrElse(Map[String, Seq[String]]())
+    Map("id" -> Set(id), "date" -> Set(date)) ++ info.getOrElse(Map[String, Set[String]]())
   }
 
   private def writeDocInfo(infoFile: File,
-                           info: Map[String, Seq[String]]) : Int = {
+                           info: Map[String, Set[String]]) : Int = {
     if (infoFile.isFile) 409
     else {
       Try {

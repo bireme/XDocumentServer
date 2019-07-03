@@ -1,4 +1,4 @@
-/*=========================================================================
+ /*=========================================================================
 
     XDocumentServer © Pan American Health Organization, 2018.
     See License at: https://github.com/bireme/XDocumentServer/blob/master/LICENSE.txt
@@ -16,6 +16,7 @@ import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
 
 //https://github.com/bireme/fi-admin/wiki/API
+//http://basalto01.bireme.br:9292/solr/#/pdfs/query
 
 class UpdateDocuments(pdfDocDir: String,
                       solrColUrl: String,
@@ -32,7 +33,7 @@ class UpdateDocuments(pdfDocDir: String,
   val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
 
   /**
-    * Update the contents of only one document (metadata + thumbnail)
+    * Update the contents of only one document (metadata + pdf + thumbnail)
     * @param docId the document id
     * @return true if the update was a success or false otherwise
     */
@@ -40,9 +41,9 @@ class UpdateDocuments(pdfDocDir: String,
     assert(docId != null)
 
     getMetadata(docId) exists {
-      meta: Map[String, Seq[String]] =>
-        val id: Option[Seq[String]] = meta.get("id")
-        val url: Option[Seq[String]] = meta.get("ur")
+      meta: Map[String, Set[String]] =>
+        val id: Option[Set[String]] = meta.get("id")
+        val url: Option[Set[String]] = meta.get("ur")
 
         if (id.isEmpty || url.isEmpty) false
         else {
@@ -69,42 +70,40 @@ class UpdateDocuments(pdfDocDir: String,
   def addMissing(): Unit = {
     val (_, lpssIds, ltsIds) = getStoredIds(lpss, lts)
 
-    val metad = getMetadata(Set[String]())
-     metad foreach {
-      meta =>
-        val id: Option[Seq[String]] = meta.get("id")
-        val url: Option[Seq[String]] = meta.get("ur")
 
-        if (id.isEmpty && url.isEmpty) println("id and url are empty")
-        else if (id.isEmpty) println(s"\n--- Empty id. url=${url.get.head}")
-        else if (url.isEmpty) println(s"\n--- Empty url. id=${id.get.head}")
-        else {
-          val idStr: String = id.get.head
-          val urlStr: String = url.get.head
-          val lpssContains = lpssIds.contains(idStr)
-          val lstContains = ltsIds.contains(idStr)
+    getDocumentIds foreach {
+      docId =>
+        val lpssContains = lpssIds.contains(docId)
+        val lstContains = ltsIds.contains(docId)
 
-          if (!lpssContains || !lstContains) {
-            println(s"\nProcessing document:$idStr")
-            if (!lpssContains) {
-              val code = lpss.createDocument(idStr, urlStr, Some(meta))
-              val prefix = if (code == 201) "+++" else "---"
-              val status = if (code == 201) "OK" else "ERROR"
-              println(s"$prefix LocalPdfSrcServer document creation $status. id=$idStr url=$urlStr code=$code")
-            }
-            if (!lstContains) {
-              val code = lts.createDocument(idStr, urlStr, None)
-              val prefix = if (code == 201) "+++" else "---"
-              val status = if (code == 201) "OK" else "ERROR"
-              println(s"$prefix LocalThumbnailServer document creation $status. id=$idStr url=$urlStr code=$code")
-            }
+        if (!lpssContains || !lstContains) {
+          println(s"\n*** Processing document:$docId")
+          getMetadata(docId) match {
+            case Left(err) => println(s"--- Getting document metadata ERROR. id=$docId msg=$err")
+            case Right(meta) =>
+              meta.get("ur") match {
+                case None => println(s"--- Getting url from metadata ERROR. id=$docId")
+                case Some(url: Set[String]) =>
+                  if (!lpssContains) {
+                    val code = lpss.createDocument(docId, url.head, Some(meta))
+                    val prefix = if (code == 201) "+++" else "---"
+                    val status = if (code == 201) "OK" else "ERROR"
+                    println(s"$prefix LocalPdfSrcServer document creation $status. id=$docId url=$url.head code=$code")
+                  }
+                  if (!lstContains) {
+                    val code = lts.createDocument(docId, url.head, None)
+                    val prefix = if (code == 201) "+++" else "---"
+                    val status = if (code == 201) "OK" else "ERROR"
+                    println(s"$prefix LocalThumbnailServer document creation $status. id=$docId url=$url.head code=$code")
+                  }
+              }
           }
         }
     }
   }
 
   /**
-    * Update document whose updated_time field changed compared to FI-Admin field.
+    * Update document whose field 'ud' changed compared to FI-Admin field 'updated_time'.
     */
   def updateChanged(): Unit = {
     val (_, lpssIds, ltsIds) = getStoredIds(lpss, lts)
@@ -115,7 +114,7 @@ class UpdateDocuments(pdfDocDir: String,
         println(s"Checking document:$docId [if changed]")
         getMetadata(docId) match {
           case Right(meta) =>
-            if (meta.isEmpty) {
+            if (meta.isEmpty) {    // Document was deleted in FI_Admin
               if (lpssIds.contains(docId)) {
                 val code1 = lpss.deleteDocument(docId)
                 val prefix1 = if (code1 == 200) "+++" else "---"
@@ -128,14 +127,14 @@ class UpdateDocuments(pdfDocDir: String,
                 val status2 = if (code2 == 200) "OK" else "ERROR"
                 println(s"$prefix2 LocalThumbnailServer document deletion $status2. id=$docId code=$code2")
               }
-            } else {
-              meta.get("ud") match {
+            } else {              // Document is present in FI_Admin
+              meta.get("ud") match { // update date
                 case Some(utime) =>
                   lpss.getDocumentInfo(docId) match {
                     case Right(meta2) =>
                       meta2.get("ud") match {
                         case Some(updTime) =>
-                          if (updTime.isEmpty || !utime.head.equals(updTime.head)) {
+                          if (updTime.isEmpty || !utime.head.equals(updTime.head)) {  // Document has changed
                             if (updateOne(docId)) println(s"+++ document updated OK. id=$docId")
                             else println(s"--- document updated ERROR. id=$docId")
                           }
@@ -158,28 +157,32 @@ class UpdateDocuments(pdfDocDir: String,
     lpss.deleteDocuments()
     lts.deleteDocuments()
 
-    getMetadata(Set[String]()) foreach {
-      meta =>
-        val id: Option[Seq[String]] = meta.get("id")
-        val url: Option[Seq[String]] = meta.get("ur")
+    getDocumentIds.foreach {
+      id =>
+        getMetadata(id) match {
+          case Right(meta) =>
+            val id: Option[Set[String]] = meta.get("id")
+            val url: Option[Set[String]] = meta.get("ur")
 
-        if (id.isEmpty && url.isEmpty) println("id and url are empty")
-        else if (id.isEmpty) println(s"---- Empty id. url=${url.get.head}")
-        else if (url.isEmpty) println(s"---- Empty url. id=${id.get.head}")
-        else {
-          val idStr: String = id.get.head
-          val urlStr: String = url.get.head
+            if (id.isEmpty && url.isEmpty) println("id and url are empty")
+            else if (id.isEmpty) println(s"---- Empty id. url=${url.get.head}")
+            else if (url.isEmpty) println(s"---- Empty url. id=${id.get.head}")
+            else {
+              val idStr: String = id.get.head
+              val urlStr: String = url.get.head
 
-          println(s"\nProcessing document:$idStr")
-          val code1 = lpss.createDocument(idStr, urlStr, Some(meta))
-          val prefix1 = if (code1 == 201) "+++" else "---"
-          val status1 = if (code1 == 201) "OK" else "ERROR"
-          println(s"$prefix1 LocalPdfSrcServer document creation $status1. id=$idStr url=$urlStr code=$code1")
+              println(s"\nProcessing document:$idStr")
+              val code1 = lpss.createDocument(idStr, urlStr, Some(meta))
+              val prefix1 = if (code1 == 201) "+++" else "---"
+              val status1 = if (code1 == 201) "OK" else "ERROR"
+              println(s"$prefix1 LocalPdfSrcServer document creation $status1. id=$idStr url=$urlStr code=$code1")
 
-          val code2 = lts.createDocument(idStr, urlStr, None)
-          val prefix2 = if (code2 == 201) "+++" else "---"
-          val status2 = if (code2 == 201) "OK" else "ERROR"
-          println(s"$prefix2 LocalThumbnailServer document creation $status2. id=$idStr url=$urlStr code=$code2")
+              val code2 = lts.createDocument(idStr, urlStr, None)
+              val prefix2 = if (code2 == 201) "+++" else "---"
+              val status2 = if (code2 == 201) "OK" else "ERROR"
+              println(s"$prefix2 LocalThumbnailServer document creation $status2. id=$idStr url=$urlStr code=$code2")
+            }
+          case Left(msg) => println(s"---- Skipping document. id=$id msg=$msg")
         }
     }
   }
@@ -200,41 +203,31 @@ class UpdateDocuments(pdfDocDir: String,
     (docs1.intersect(docs2), docs1, docs2)
   }
 
-  private def getMetadata(storedIds: Set[String]): Seq[Map[String,Seq[String]]] = {
-    val commIds: Set[String] = getCommunityIds.getOrElse(Set[String]())
-
-    commIds.foldLeft(Seq[Map[String,Seq[String]]]()) {
-      case (seq1, cid) => getCollectionIds(cid) match {
-        case Some(ids) =>
-          ids.foldLeft(seq1) {
-            case (seq2, id) =>
-              //println(s"***+++ parsing metadata community:$cid collection:$id")
-              seq2 ++ getMetadata(cid, id, storedIds)
-          }
-        case None => Seq[Map[String, Seq[String]]]()
-      }
+  private def getDocumentIds: Set[String] = {
+    val ids = getCollectionIds.getOrElse(Set[String]()).foldLeft(Set[String]()) {
+      case (set, colId) =>
+        Try {
+          print(s"Loading ids from colId: $colId.")
+          val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&status=1&limit=0&format=json", "utf-8")
+          val content = src.getLines().mkString("\n")
+          src.close()
+          content
+        } match {
+          case Success(content) =>
+            val rex = "\"id\": (\\d+)".r
+            val ids1 = rex.findAllMatchIn(content).foldLeft(Set[String]()) {
+              case (set1, mat) => set1 + mat.group(1)
+            }
+            println(s"\tTotal collection ids: ${ids1.size}")
+            set ++ ids1
+          case Failure(_) => set
+        }
     }
+    println(s"Total ids: ${ids.size}")
+    ids
   }
 
-  private def getMetadata(comId: String,
-                          colId: String,
-                          storedIds: Set[String]): Seq[Map[String,Seq[String]]] = {
-    Try {
-      val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&status=1&limit=0&format=json", "utf-8")
-      val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
-      src.close()
-      doc
-    } match {
-      case Success(json) => json match {
-        case Right(js: Json) => getMetadata(comId, colId,
-          js.hcursor.downField("objects").downArray.first, storedIds, Seq[Map[String,Seq[String]]]())
-        case Left(_) => Seq[Map[String,Seq[String]]]()
-      }
-      case Failure(_) => Seq[Map[String,Seq[String]]]()
-    }
-  }
-
-  private def getMetadata(docId: String): Either[String, Map[String,Seq[String]]] = {
+  private def getMetadata(docId: String): Either[String, Map[String,Set[String]]] = {
     Try {
       val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&status=1&limit=1&format=json", "utf-8")
       val content: String = src.getLines().mkString("\n").trim
@@ -245,21 +238,21 @@ class UpdateDocuments(pdfDocDir: String,
     } match {
       case Success(json) => json match {
         case Right(js: Json) => Right(getMetadata(js.hcursor.downField("objects").downArray.first)
-                                      .getOrElse(Map[String,Seq[String]]()))
+          .getOrElse(Map[String,Set[String]]()))
         case Left(ex) => Left(ex.toString)
       }
       case Failure(ex) => Left(ex.toString)
     }
   }
 
-  private def getMetadata(elem: ACursor): Option[Map[String,Seq[String]]] = {
+  private def getMetadata(elem: ACursor): Option[Map[String,Set[String]]] = {
     if (elem.succeeded) {
-      val docId: Seq[String] = parseId(elem)
-      val url: Seq[String] = parseDocUrl(elem)
-      val comId2: Seq[String] = parseCommunity(elem)
-      val colId2: Seq[String] = parseCollection(elem)
+      val docId: Set[String] = parseId(elem)
+      val url: Set[String] = parseDocUrl(elem)
+      val comId: Set[String] = parseCommunity(elem)
+      val colId: Set[String] = parseCollection(elem)
 
-      val map: Map[String, Seq[String]] = Map(
+      val map: Map[String, Set[String]] = Map(
         "id" -> docId,
         "ti" -> parseTitle(elem),
         "type" -> parseDocType(elem),
@@ -271,8 +264,8 @@ class UpdateDocuments(pdfDocDir: String,
         "ur" -> url,
         "la" -> parseLanguage(elem),
         "mh" -> parseDescriptor(elem),
-        "com" -> comId2,
-        "col" -> colId2,
+        "com" -> comId,
+        "col" -> colId,
         "ud" -> parseUpdDate(elem),
         "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
       )
@@ -280,123 +273,36 @@ class UpdateDocuments(pdfDocDir: String,
     } else None
   }
 
-  private def getMetadata(comId: String,
-                          colId: String,
-                          elem: ACursor,
-                          storedIds: Set[String],
-                          seq: Seq[Map[String,Seq[String]]]): Seq[Map[String,Seq[String]]] = {
-    if (elem.succeeded) {
-      val map = getMetadata(comId, colId, elem, storedIds)
-      val aux = if (map.isEmpty) seq
-                else seq :+ map
-      getMetadata(comId, colId, elem.right, storedIds, aux)
-    } else seq
-  }
-
-  private def getMetadata(comId: String,
-                          colId: String,
-                          elem: ACursor,
-                          storedIds: Set[String]): Map[String,Seq[String]] = {
-    val docId: Seq[String] = parseId(elem)
-
-    if (docId.isEmpty || storedIds.contains(docId.head)) Map[String,Seq[String]]()
-    else {
-      val url: Seq[String] = parseDocUrl(elem)
-      val comId2: Seq[String] = parseCommunity(elem)
-      val colId2: Seq[String] = parseCollection(elem)
-
-      println(s"+++ parsing metadata - community:$comId collection:$colId document:${docId.head}")
-
-      val map: Map[String, Seq[String]] = Map(
-        "id" -> docId,
-        "ti" -> parseTitle(elem),
-        "type" -> parseDocType(elem),
-        "au" -> parseAuthor(elem),
-        "da" -> parseYear(elem),
-        "kw" -> parseKeyword(elem),
-        "fo" -> parseSource(elem),
-        "ab" -> parseAbstr(elem),
-        "ur" -> url,
-        "la" -> parseLanguage(elem),
-        "mh" -> parseDescriptor(elem),
-        "com" -> comId2,
-        "col" -> colId2,
-        "ud" -> parseUpdDate(elem),
-        "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
-      )
-      map.filterNot(kv => kv._2.isEmpty)
-    }
-  }
-
-  private def getCommunityIds: Option[Set[String]] = {
+  private def getCollectionIds: Option[Set[String]] = {
     Try {
-      val src: BufferedSource = Source.fromURL(s"$fiadminApi/community?limit=0&format=json", "utf-8")
-      val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
+      val src: BufferedSource = Source.fromURL(s"$fiadminApi/collection/?limit=0&format=json", "utf-8")
+      val content = src.getLines().mkString("\n")
       src.close()
-      doc
+
+      content
     } match {
-      case Success(json: Either[ParsingFailure, Json]) =>
-        json match {
-          case Right(js) =>
-            Some(getCommunityIds(js.hcursor.downField("objects").downArray.first, Set[String]()))
-          case Left(_) => None
-        }
+      case Success(content) =>
+        val rex = "\"id\": (\\d+)".r
+        Some(rex.findAllMatchIn(content).foldLeft(Set[String]()) {
+          case (set, mat) => set + mat.group(1)
+        })
       case Failure(_) => None
     }
   }
 
-  private def getCommunityIds(elem: ACursor,
-                              set: Set[String]): Set[String] = {
-    if (elem.succeeded) {
-      val aux: Set[String] = elem.downField("id").as[Int] match {
-        case Right(id) =>
-          set + id.toString
-        case _ => set
-      }
-      getCommunityIds(elem.right, aux)
-    } else set
-  }
-
-  private def getCollectionIds(communityId: String): Option[Set[String]] = {
-    Try {
-      val src: BufferedSource = Source.fromURL(s"$fiadminApi/collection/?community=$communityId&limit=0&format=json", "utf-8")
-      val doc: Either[ParsingFailure, Json] = parse(src.getLines().mkString("\n"))
-      src.close()
-      doc
-    } match {
-      case Success(json: Either[ParsingFailure, Json]) =>
-        json match {
-          case Right(js) => Some(getCollectionIds(js.hcursor.downField("objects").downArray.first, Set[String]()))
-          case Left(_) => None
-        }
-      case Failure(_) => None
-    }
-  }
-
-  private def getCollectionIds(elem: ACursor,
-                               set: Set[String]): Set[String] = {
-    if (elem.succeeded) {
-      val aux: Set[String] = elem.downField("id").as[Int] match {
-        case Right(id) => set + id.toString
-        case _ => set
-      }
-      getCollectionIds(elem.right, aux)
-    } else set
-  }
-
-  private def parseId(elem: ACursor): Seq[String] = {
+  private def parseId(elem: ACursor): Set[String] = {
     elem.downField("id").as[Int] match {
-      case Right(id: Int) => Seq[String](id.toString)
-      case Left(_) => Seq[String]()
+      case Right(id: Int) => Set[String](id.toString)
+      case Left(_) => Set[String]()
     }
   }
 
-  private def parseTitle(elem: ACursor): Seq[String] = {
-    parseTitle(elem.downField("title_monographic").downArray.first, Seq[String]())
+  private def parseTitle(elem: ACursor): Set[String] = {
+    parseTitle(elem.downField("title_monographic").downArray.first, Set[String]())
   }
 
   private def parseTitle(elem: ACursor,
-                         seq: Seq[String]): Seq[String] = {
+                         seq: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val lang: String = elem.downField("_i").as[String].getOrElse("")
       val text: String = elem.downField("text").as[String].getOrElse("")
@@ -404,12 +310,12 @@ class UpdateDocuments(pdfDocDir: String,
       if (text.isEmpty) parseTitle(elem.right, seq)
       else {
         val langTxt = if (lang.isEmpty) lang else s"($lang) $text"
-        parseTitle(elem.right, seq :+ langTxt)
+        parseTitle(elem.right, seq + langTxt)
       }
     } else seq
   }
 
-  private def parseDocType(elem: ACursor): Seq[String] = Seq(elem.downField("literature_type").as[String].getOrElse(""))
+  private def parseDocType(elem: ACursor): Set[String] = Set(elem.downField("literature_type").as[String].getOrElse(""))
 
   /*
     individual_author_monographic
@@ -419,25 +325,25 @@ class UpdateDocuments(pdfDocDir: String,
     individual_author
     corporate_author
    */
-  private def parseAuthor(elem: ACursor): Seq[String] = {
+  private def parseAuthor(elem: ACursor): Set[String] = {
     val e = elem.downField("individual_author_monographic").downArray.first
-    if (e.succeeded) parseAuthor(e, Seq[String]())
+    if (e.succeeded) parseAuthor(e, Set[String]())
     else {
       val e = elem.downField("corporate_author_monographic").downArray.first
-      if (e.succeeded) parseAuthor(e, Seq[String]())
+      if (e.succeeded) parseAuthor(e, Set[String]())
       else {
         val e = elem.downField("individual_author_collection").downArray.first
-        if (e.succeeded) parseAuthor(e, Seq[String]())
+        if (e.succeeded) parseAuthor(e, Set[String]())
         else {
           val e = elem.downField("corporate_author_collection").downArray.first
-          if (e.succeeded) parseAuthor(e, Seq[String]())
+          if (e.succeeded) parseAuthor(e, Set[String]())
           else {
             val e = elem.downField("individual_author").downArray.first
-            if (e.succeeded) parseAuthor(e, Seq[String]())
+            if (e.succeeded) parseAuthor(e, Set[String]())
             else {
               val e = elem.downField("corporate_author").downArray.first
-              if (e.succeeded) parseAuthor(e, Seq[String]())
-              else Seq[String]()
+              if (e.succeeded) parseAuthor(e, Set[String]())
+              else Set[String]()
             }
           }
         }
@@ -446,140 +352,140 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseAuthor(elem: ACursor,
-                          seq: Seq[String]): Seq[String] = {
+                          set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val text: String = elem.downField("text").as[String].getOrElse("")
 
-      if (text.isEmpty) parseAuthor(elem.right, seq)
-      else parseAuthor(elem.right, seq :+ text)
-    } else seq
+      if (text.isEmpty) parseAuthor(elem.right, set)
+      else parseAuthor(elem.right, set + text)
+    } else set
   }
 
-  private def parseYear(elem: ACursor): Seq[String] = {
+  private def parseYear(elem: ACursor): Set[String] = {
     val date = elem.downField("publication_date_normalized").as[String].getOrElse("")
     val size = date.length
 
-    Seq(if (size == 0) ""
+    Set(if (size == 0) ""
         else if (size < 4) date
         else date.substring(0,4))
   }
 
-  private def parseKeyword(elem: ACursor): Seq[String] = {
-    parseKeyword(elem.downField("author_keyword").downArray.first, Seq[String]())
+  private def parseKeyword(elem: ACursor): Set[String] = {
+    parseKeyword(elem.downField("author_keyword").downArray.first, Set[String]())
   }
 
   private def parseKeyword(elem: ACursor,
-                         seq: Seq[String]): Seq[String] = {
+                         set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val lang: String = elem.downField("_i").as[String].getOrElse("")
       val text: String = elem.downField("text").as[String].getOrElse("")
 
-      if (text.isEmpty) parseKeyword(elem.right, seq)
+      if (text.isEmpty) parseKeyword(elem.right, set)
       else {
         val langTxt = if (lang.isEmpty) lang else s"($lang) $text"
-        parseKeyword(elem.right, seq :+ langTxt)
+        parseKeyword(elem.right, set + langTxt)
       }
-    } else seq
+    } else set
   }
 
-  private def parseSource(elem: ACursor): Seq[String] = Seq(elem.downField("source").as[String].getOrElse(""))
+  private def parseSource(elem: ACursor): Set[String] = Set(elem.downField("source").as[String].getOrElse(""))
 
-  private def parseAbstr(elem: ACursor): Seq[String] = {
-    parseAbstr(elem.downField("abstract").downArray.first, Seq[String]())
+  private def parseAbstr(elem: ACursor): Set[String] = {
+    parseAbstr(elem.downField("abstract").downArray.first, Set[String]())
   }
 
   private def parseAbstr(elem: ACursor,
-                         seq: Seq[String]): Seq[String] = {
+                         set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val lang: String = elem.downField("_i").as[String].getOrElse("")
       val text: String = elem.downField("text").as[String].getOrElse("")
 
-      if (text.isEmpty) parseAbstr(elem.right, seq)
+      if (text.isEmpty) parseAbstr(elem.right, set)
       else {
         val langTxt = if (lang.isEmpty) lang else s"($lang) $text"
-        parseAbstr(elem.right, seq :+ langTxt)
+        parseAbstr(elem.right, set + langTxt)
       }
-    } else seq
+    } else set
   }
 
-  private def parseDocUrl(elem: ACursor): Seq[String] = {
+  private def parseDocUrl(elem: ACursor): Set[String] = {
     elem.downField("electronic_address").downArray.first.downField("_u").as[String] match {
-      case Right(url) => Seq[String](url)
-      case _ => Seq[String]()
+      case Right(url) => Set[String](url)
+      case _ => Set[String]()
     }
   }
 
-  private def parseLanguage(elem: ACursor): Seq[String] = {
-    parseLanguage(elem.downField("text_language").downArray.first, Seq[String]())
+  private def parseLanguage(elem: ACursor): Set[String] = {
+    parseLanguage(elem.downField("text_language").downArray.first, Set[String]())
   }
 
   private def parseLanguage(elem: ACursor,
-                            seq: Seq[String]): Seq[String] = {
+                            set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val text: String = elem.as[String].getOrElse("")
 
-      if (text.isEmpty) parseLanguage(elem.right, seq)
-      else parseLanguage(elem.right, seq :+ text)
-    } else seq
+      if (text.isEmpty) parseLanguage(elem.right, set)
+      else parseLanguage(elem.right, set + text)
+    } else set
   }
 
-  private def parseDescriptor(elem: ACursor): Seq[String] = {
-    val primary = parseDescriptor(elem.downField("descriptors_primary").downArray.first, Seq[String]())
-    val secondary = parseDescriptor(elem.downField("descriptors_secondary").downArray.first, Seq[String]())
+  private def parseDescriptor(elem: ACursor): Set[String] = {
+    val primary = parseDescriptor(elem.downField("descriptors_primary").downArray.first, Set[String]())
+    val secondary = parseDescriptor(elem.downField("descriptors_secondary").downArray.first, Set[String]())
 
     primary ++ secondary
   }
 
   private def parseDescriptor(elem: ACursor,
-                              seq: Seq[String]): Seq[String] = {
+                              set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val text: String = elem.downField("text").as[String].getOrElse("")
 
-      if (text.isEmpty) parseDescriptor(elem.right, seq)
-      else parseDescriptor(elem.right, seq :+ text)
-    } else seq
+      if (text.isEmpty) parseDescriptor(elem.right, set)
+      else parseDescriptor(elem.right, set + text)
+    } else set
   }
 
-  private def parseCommunity(elem: ACursor): Seq[String] = {
-    parseCommunity(elem.downField("community").downArray.first, Seq[String]())
+  private def parseCommunity(elem: ACursor): Set[String] = {
+    parseCommunity(elem.downField("community").downArray.first, Set[String]())
   }
 
   private def parseCommunity(elem: ACursor,
-                             seq: Seq[String]): Seq[String] = {
+                             set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val text: String = elem.as[String].getOrElse("")
 
-      if (text.isEmpty) parseCommunity(elem.right, seq)
+      if (text.isEmpty) parseCommunity(elem.right, set)
       else {
         val text2 = text.replaceAll("\\|([^\\^]+)\\^", "\\|\\($1\\) ")
-        parseCommunity(elem.right, seq :+ text2)
+        parseCommunity(elem.right, set + text2)
       }
-    } else seq
+    } else set
   }
 
-  private def parseCollection(elem: ACursor): Seq[String] = {
-    parseCollection(elem.downField("collection").downArray.first, Seq[String]())
+  private def parseCollection(elem: ACursor): Set[String] = {
+    parseCollection(elem.downField("collection").downArray.first, Set[String]())
   }
 
   private def parseCollection(elem: ACursor,
-                              seq: Seq[String]): Seq[String] = {
+                              set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val text: String = elem.as[String].getOrElse("")
 
-      if (text.isEmpty) parseCollection(elem.right, seq)
+      if (text.isEmpty) parseCollection(elem.right, set)
       else {
         val text2 = text.replaceAll("\\|([^\\^]+)\\^", "\\|\\($1\\) ")
-        parseCollection(elem.right, seq :+ text2)
+        parseCollection(elem.right, set + text2)
       }
-    } else seq
+    } else set
   }
 
-  private def parseUpdDate(elem: ACursor): Seq[String] = Seq(elem.downField("updated_time").as[String].getOrElse(""))
+  private def parseUpdDate(elem: ACursor): Set[String] = Set(elem.downField("updated_time").as[String].getOrElse(""))
 
   private def parseThumbUrl(id: String,
-                            url: String): Seq[String] = thumbServUrl match {
-    case Some(tsu) => Seq(s"$tsu?id=$id&url=$url")
-    case None      => Seq("")
+                            url: String): Set[String] = thumbServUrl match {
+    case Some(tsu) => Set(s"$tsu?id=$id&url=$url")
+    case None      => Set("")
   }
 }
 

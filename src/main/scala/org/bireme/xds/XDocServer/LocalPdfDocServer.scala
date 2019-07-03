@@ -26,7 +26,7 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
     */
   def getDocument(id: String,
                   url: Option[String],
-                  info: Option[Map[String, Seq[String]]] = None): Either[Int, InputStream] = {
+                  info: Option[Map[String, Set[String]]] = None): Either[Int, InputStream] = {
     url match {
       case Some(url1) =>
         getDocumentInfo(id) match {
@@ -36,7 +36,7 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
               case _ => createDocument2(id, url1, info)
             }
           case Right(map) => // There is a previous document stored
-            val sUrl = map.getOrElse("url", Seq("")).head
+            val sUrl = map.getOrElse("url", Set("")).head
             if (url1.trim.isEmpty || url1.trim.equals(sUrl)) getDocument(id)  // The url new and stored are the same, so retrieve the stored version
             else createDocument2(id, url1, info, deleteBefore = true)// Store the new version because urls are different
         }
@@ -46,7 +46,7 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
 
   private def createDocument2(id: String,
                               url: String,
-                              info: Option[Map[String, Seq[String]]],
+                              info: Option[Map[String, Set[String]]],
                               deleteBefore: Boolean = false): Either[Int, InputStream] = {
     if (url.trim.isEmpty) Left(404)
     else {
@@ -72,25 +72,25 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
     */
   override def createDocumentInfo(id: String,
                                   source: Option[InputStream] = None,
-                                  info: Option[Map[String, Seq[String]]] = None): Map[String, Seq[String]] = {
+                                  info: Option[Map[String, Set[String]]] = None): Map[String, Set[String]] = {
     val now: Date = Calendar.getInstance().getTime
     val dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss")
     val date: String = dateFormat.format(now)
-    val infoT: Option[Map[String, Seq[String]]] =
+    val infoT: Option[Map[String, Set[String]]] =
       info.map(_.map(kv => kv._1.trim() -> kv._2.map(_.replace("\n", " ").trim()) ))
     val map = Map(
-      "id" -> Seq(id),
-      "date" -> Seq(date)) ++ infoT.getOrElse(Map[String, Seq[String]]())
+      "id" -> Set(id),
+      "date" -> Set(date)) ++ infoT.getOrElse(Map[String, Set[String]]())
 
     Try {
       if (source.isEmpty) throw new NullPointerException()
       val pddoc: PDDocument = PDDocument.load(source.get)
       val info2: PDDocumentInformation = pddoc.getDocumentInformation
-      val map2: Map[String, Seq[String]] = Map(
-        "title" -> (if (info2.getTitle == null) null else Seq(info2.getTitle)),
-        "subject" -> (if (info2.getSubject == null) null else Seq(info2.getSubject)),
-        "authors" -> (if (info2.getAuthor == null) null else Seq(info2.getAuthor)),
-        "keywords" -> (if (info2.getKeywords == null) null else Seq(info2.getKeywords))
+      val map2: Map[String, Set[String]] = Map(
+        "title" -> (if (info2.getTitle == null) null else Set(info2.getTitle)),
+        "subject" -> (if (info2.getSubject == null) null else Set(info2.getSubject)),
+        "authors" -> (if (info2.getAuthor == null) null else Set(info2.getAuthor)),
+        "keywords" -> (if (info2.getKeywords == null) null else Set(info2.getKeywords))
       ).filter { case (_, v) => v != null }
 
       pddoc.close()

@@ -43,8 +43,8 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
     val response: HttpServerResponse = routingContext.response()
       .putHeader("content-type", "text/plain").setChunked(true)
     val params: MultiMap = request.params()
-    val mapParams = params.names().foldLeft(Map[String, Seq[String]]()) {
-      case (map, name) => map + (name -> params.getAll(name))
+    val mapParams = params.names().foldLeft(Map[String, Set[String]]()) {
+      case (map, name) => map + (name -> params.getAll(name).toSet)
     }
 
     if (mapParams.get("id").isEmpty) {

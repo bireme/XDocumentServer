@@ -28,18 +28,18 @@ class LocalThumbnailServer(docServer: DocumentServer,
     */
   override def createDocument(id: String,
                               source: InputStream,
-                              info: Option[Map[String, Seq[String]]] = None): Int = {
+                              info: Option[Map[String, Set[String]]] = None): Int = {
     val stream = Algo.sha1.tap(source) // Reuse inputstream to calculate hash and generate the thumbnail
 
     myPDFToImage.convert(stream) match {
       case Some(is) =>
-        val tuple: (String, Seq[String]) = "hash" -> Seq[String](stream.hash)
+        val tuple: (String, Set[String]) = "hash" -> Set[String](stream.hash)
         val ret: Int = info match {
           case Some(_) => super.createDocument(id, is, info.map(_ + tuple))
           case None =>
             if (is.markSupported()) {
               is.mark(Integer.MAX_VALUE)
-              val info2: Map[String, Seq[String]] = createDocumentInfo(id, Some(is)) + tuple
+              val info2: Map[String, Set[String]] = createDocumentInfo(id, Some(is)) + tuple
               is.reset()
               super.createDocument(id, is, Some(info2))
             } else super.createDocument(id, is, Some(createDocumentInfo(id, None) + tuple))
@@ -59,7 +59,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
     */
   override def createDocument(id: String,
                               url: String,
-                              info: Option[Map[String, Seq[String]]]): Int = {
+                              info: Option[Map[String, Set[String]]]): Int = {
     Tools.url2InputStream(url) match {
       case Some(is) =>
         val ret = createDocument(id, is, info)
@@ -86,7 +86,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
               case _ => createDocument2(id, url)
             }
           case Right(map) => // There is a previous document stored
-            val sUrl = map.getOrElse("url", Seq("")).head
+            val sUrl = map.getOrElse("url", Set("")).head
             if (url1.trim.isEmpty || url1.trim.equals(sUrl)) getDocument(id)  // The url new and stored are the same, so retrieve the stored version
             else {  // Store the new version because urls are different
               deleteDocument(id)
@@ -103,7 +103,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
     else {
       getPdfDocument(id, url) match {
         case Right(is) =>
-          createDocument(id, is, Some(Map("url" -> Seq[String](url.getOrElse(""))))) match {
+          createDocument(id, is, Some(Map("url" -> Set[String](url.getOrElse(""))))) match {
             case 201 => getDocument(id)
             case err => Left(err)
           }
@@ -121,7 +121,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
     */
   override def replaceDocument(id: String,
                                source: InputStream,
-                               info: Option[Map[String, Seq[String]]] = None): Int = {
+                               info: Option[Map[String, Set[String]]] = None): Int = {
     deleteDocument(id) match {
       case 500 => 500
       case _ => createDocument(id, source, info)
@@ -137,7 +137,7 @@ class LocalThumbnailServer(docServer: DocumentServer,
     */
   override def replaceDocument(id: String,
                                url: String,
-                               info: Option[Map[String, Seq[String]]]): Int = {
+                               info: Option[Map[String, Set[String]]]): Int = {
     deleteDocument(id) match {
       case 500 => 500
       case _ => createDocument(id, url, info)
