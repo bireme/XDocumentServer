@@ -24,11 +24,11 @@ class UpdateDocuments(pdfDocDir: String,
                       thumbServUrl: Option[String]) {
   val fiadminApi = "https://fi-admin.bvsalud.org/api"
 
-  val pdfDocServer = new FSDocServer(new File(pdfDocDir))
+  val pdfDocServer = new FSDocServer(new File(pdfDocDir), Some("pdf"))
   //val pdfDocServer = new SwayDBServer(new File(pdfDocDir))
   val lpds: LocalPdfDocServer = new LocalPdfDocServer(pdfDocServer)
   val lpss: LocalPdfSrcServer = new LocalPdfSrcServer(new SolrDocServer(solrColUrl), lpds)
-  val thumbDocServer = new FSDocServer(new File(thumbDir))
+  val thumbDocServer = new FSDocServer(new File(thumbDir), Some("jpg"))
   //val thumbDocServer = new SwayDBServer(new File(thumbDir))
   val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
 
@@ -88,13 +88,13 @@ class UpdateDocuments(pdfDocDir: String,
                     val code = lpss.createDocument(docId, url.head, Some(meta))
                     val prefix = if (code == 201) "+++" else "---"
                     val status = if (code == 201) "OK" else "ERROR"
-                    println(s"$prefix LocalPdfSrcServer document creation $status. id=$docId url=$url.head code=$code")
+                    println(s"$prefix LocalPdfSrcServer document creation $status. id=$docId url=${url.head} code=$code")
                   }
                   if (!lstContains) {
                     val code = lts.createDocument(docId, url.head, None)
                     val prefix = if (code == 201) "+++" else "---"
                     val status = if (code == 201) "OK" else "ERROR"
-                    println(s"$prefix LocalThumbnailServer document creation $status. id=$docId url=$url.head code=$code")
+                    println(s"$prefix LocalThumbnailServer document creation $status. id=$docId url=${url.head} code=$code")
                   }
               }
           }
@@ -237,7 +237,7 @@ class UpdateDocuments(pdfDocDir: String,
       parse(content)
     } match {
       case Success(json) => json match {
-        case Right(js: Json) => Right(getMetadata(js.hcursor.downField("objects").downArray.first)
+        case Right(js: Json) => Right(getMetadata(js.hcursor.downField("objects").downArray)
           .getOrElse(Map[String,Set[String]]()))
         case Left(ex) => Left(ex.toString)
       }
@@ -298,9 +298,10 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseTitle(elem: ACursor): Set[String] = {
-    parseTitle(elem.downField("title_monographic").downArray.first, Set[String]())
+    parseTitle(elem.downField("title_monographic").downArray, Set[String]())
   }
 
+  @scala.annotation.tailrec
   private def parseTitle(elem: ACursor,
                          seq: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -326,22 +327,22 @@ class UpdateDocuments(pdfDocDir: String,
     corporate_author
    */
   private def parseAuthor(elem: ACursor): Set[String] = {
-    val e = elem.downField("individual_author_monographic").downArray.first
+    val e = elem.downField("individual_author_monographic").downArray
     if (e.succeeded) parseAuthor(e, Set[String]())
     else {
-      val e = elem.downField("corporate_author_monographic").downArray.first
+      val e = elem.downField("corporate_author_monographic").downArray
       if (e.succeeded) parseAuthor(e, Set[String]())
       else {
-        val e = elem.downField("individual_author_collection").downArray.first
+        val e = elem.downField("individual_author_collection").downArray
         if (e.succeeded) parseAuthor(e, Set[String]())
         else {
-          val e = elem.downField("corporate_author_collection").downArray.first
+          val e = elem.downField("corporate_author_collection").downArray
           if (e.succeeded) parseAuthor(e, Set[String]())
           else {
-            val e = elem.downField("individual_author").downArray.first
+            val e = elem.downField("individual_author").downArray
             if (e.succeeded) parseAuthor(e, Set[String]())
             else {
-              val e = elem.downField("corporate_author").downArray.first
+              val e = elem.downField("corporate_author").downArray
               if (e.succeeded) parseAuthor(e, Set[String]())
               else Set[String]()
             }
@@ -351,6 +352,7 @@ class UpdateDocuments(pdfDocDir: String,
     }
   }
 
+  @scala.annotation.tailrec
   private def parseAuthor(elem: ACursor,
                           set: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -371,11 +373,12 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseKeyword(elem: ACursor): Set[String] = {
-    parseKeyword(elem.downField("author_keyword").downArray.first, Set[String]())
+    parseKeyword(elem.downField("author_keyword").downArray, Set[String]())
   }
 
+  @scala.annotation.tailrec
   private def parseKeyword(elem: ACursor,
-                         set: Set[String]): Set[String] = {
+                           set: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val lang: String = elem.downField("_i").as[String].getOrElse("")
       val text: String = elem.downField("text").as[String].getOrElse("")
@@ -391,9 +394,10 @@ class UpdateDocuments(pdfDocDir: String,
   private def parseSource(elem: ACursor): Set[String] = Set(elem.downField("source").as[String].getOrElse(""))
 
   private def parseAbstr(elem: ACursor): Set[String] = {
-    parseAbstr(elem.downField("abstract").downArray.first, Set[String]())
+    parseAbstr(elem.downField("abstract").downArray, Set[String]())
   }
 
+  @scala.annotation.tailrec
   private def parseAbstr(elem: ACursor,
                          set: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -409,16 +413,17 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseDocUrl(elem: ACursor): Set[String] = {
-    elem.downField("electronic_address").downArray.first.downField("_u").as[String] match {
+    elem.downField("electronic_address").downArray.downField("_u").as[String] match {
       case Right(url) => Set[String](url)
       case _ => Set[String]()
     }
   }
 
   private def parseLanguage(elem: ACursor): Set[String] = {
-    parseLanguage(elem.downField("text_language").downArray.first, Set[String]())
+    parseLanguage(elem.downField("text_language").downArray, Set[String]())
   }
 
+  @scala.annotation.tailrec
   private def parseLanguage(elem: ACursor,
                             set: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -430,12 +435,13 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseDescriptor(elem: ACursor): Set[String] = {
-    val primary = parseDescriptor(elem.downField("descriptors_primary").downArray.first, Set[String]())
-    val secondary = parseDescriptor(elem.downField("descriptors_secondary").downArray.first, Set[String]())
+    val primary = parseDescriptor(elem.downField("descriptors_primary").downArray, Set[String]())
+    val secondary = parseDescriptor(elem.downField("descriptors_secondary").downArray, Set[String]())
 
     primary ++ secondary
   }
 
+  @scala.annotation.tailrec
   private def parseDescriptor(elem: ACursor,
                               set: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -447,9 +453,10 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseCommunity(elem: ACursor): Set[String] = {
-    parseCommunity(elem.downField("community").downArray.first, Set[String]())
+    parseCommunity(elem.downField("community").downArray, Set[String]())
   }
 
+  @scala.annotation.tailrec
   private def parseCommunity(elem: ACursor,
                              set: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -464,9 +471,10 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseCollection(elem: ACursor): Set[String] = {
-    parseCollection(elem.downField("collection").downArray.first, Set[String]())
+    parseCollection(elem.downField("collection").downArray, Set[String]())
   }
 
+  @scala.annotation.tailrec
   private def parseCollection(elem: ACursor,
                               set: Set[String]): Set[String] = {
     if (elem.succeeded) {

@@ -25,10 +25,10 @@ class LocalThumbnailServerTest extends FlatSpec {
   val tdir = new File("thumbnails")
   Tools.deleteDirectory(tdir)
 
-  val pdfDocServer = new FSDocServer(pdir)
+  val pdfDocServer = new FSDocServer(pdir, Some("pdf"))
   //val pdfDocServer = new SwayDBServer(pdir)
   val lpds = new LocalPdfDocServer(pdfDocServer)
-  val thumbDocServer = new FSDocServer(tdir)
+  val thumbDocServer = new FSDocServer(tdir, Some("jpg"))
   //val thumbDocServer = new SwayDBServer(tdir)
   val lts = new LocalThumbnailServer(thumbDocServer, Right(lpds))
 

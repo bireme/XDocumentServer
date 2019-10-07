@@ -119,7 +119,7 @@ object HttpPdfDocServer extends App {
 
   if (pdfDir.isEmpty) usage()
 
-  val pdfDocServer = new FSDocServer(new File(parameters(pdfDir.get)))
+  val pdfDocServer = new FSDocServer(new File(parameters(pdfDir.get)), Some("pdf"))
   //val pdfDocServer = new SwayDBServer(new File(parameters(pdfDir.get)))
   val localPdfDocServer = new LocalPdfDocServer(pdfDocServer)
 

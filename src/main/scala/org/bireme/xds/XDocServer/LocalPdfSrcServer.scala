@@ -47,7 +47,7 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
             val docs: ACursor = cursor.downField("response").downField("docs")
             if (docs.failed) Left(404)
             else {
-              val doc: ACursor = docs.downArray.first
+              val doc: ACursor = docs.downArray
               Right(doc.keys.get.map(key => (key,cursor.downField(key))).foldLeft(Map[String, Set[String]]()) {
                 case (map, (key, acursor)) => acursor.focus match {
                   case Some(json2) =>

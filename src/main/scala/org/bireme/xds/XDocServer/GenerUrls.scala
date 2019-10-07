@@ -83,13 +83,14 @@ object GenerUrls extends App{
       case Success(json: Either[ParsingFailure, Json]) =>
         json match {
           case Right(js) =>
-            Some(getCommunityIds(js.hcursor.downField("objects").downArray.first, Set[String]()))
+            Some(getCommunityIds(js.hcursor.downField("objects").downArray, Set[String]()))
           case Left(_) => None
         }
       case Failure(_) => None
     }
   }
 
+  @scala.annotation.tailrec
   private def getCommunityIds(elem: ACursor,
                               set: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -111,13 +112,14 @@ object GenerUrls extends App{
     } match {
       case Success(json: Either[ParsingFailure, Json]) =>
         json match {
-          case Right(js) => Some(getCollectionIds(js.hcursor.downField("objects").downArray.first, Set[String]()))
+          case Right(js) => Some(getCollectionIds(js.hcursor.downField("objects").downArray, Set[String]()))
           case Left(_) => None
         }
       case Failure(_) => None
     }
   }
 
+  @scala.annotation.tailrec
   private def getCollectionIds(elem: ACursor,
                                set: Set[String]): Set[String] = {
     if (elem.succeeded) {
@@ -138,13 +140,14 @@ object GenerUrls extends App{
       doc
     } match {
       case Success(json) => json match {
-        case Right(js: Json) => getUrls(js.hcursor.downField("objects").downArray.first, Set[(String, String)]())
+        case Right(js: Json) => getUrls(js.hcursor.downField("objects").downArray, Set[(String, String)]())
         case Left(_) => Set[(String, String)]()
       }
       case Failure(_) => Set[(String, String)]()
     }
   }
 
+  @scala.annotation.tailrec
   private def getUrls(elem: ACursor,
                       aux: Set[(String, String)]): Set[(String, String)] = {
     if (elem.succeeded) {
@@ -165,5 +168,5 @@ object GenerUrls extends App{
   }
 
   private def parseDocUrl(elem: ACursor): Option[String] =
-    elem.downField("electronic_address").downArray.first.downField("_u").as[String].toOption
+    elem.downField("electronic_address").downArray.downField("_u").as[String].toOption
 }

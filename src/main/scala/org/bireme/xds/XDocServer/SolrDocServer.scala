@@ -50,7 +50,7 @@ class SolrDocServer(url: String) extends DocumentServer {
     * @return a set having all pdf document ids
     */
   override def getDocuments: Set[String] = {
-    val regex: Regex = "\"id\"\\:\"([^\"]+)\"".r
+    val regex: Regex = "\"id\":\"([^\"]+)\"".r
 
     Try(Http(url1 + "select").params(Map("fl" -> "id", "q" -> "*:*", "rows" -> "10000")).timeout(timeout, timeout).asString) match {
       case Success(response) =>
@@ -70,7 +70,7 @@ class SolrDocServer(url: String) extends DocumentServer {
     * @return the original document content (bytes) if it is found or 404 (not found) or 500 (internal server error)
     */
   override def getDocument(id: String): Either[Int, InputStream] = {
-    val regex: Regex = "\"response\"\\:\\{\"numFound\"\\:(\\d)".r
+    val regex: Regex = "\"response\":\\{\"numFound\":(\\d)".r
 
     Try(Http(url1 + "query").param("q", s"id:$id").timeout(timeout, timeout).asString) match {
       case Success(response) =>
@@ -413,7 +413,7 @@ class SolrDocServer(url: String) extends DocumentServer {
     val lastSlash = url2.lastIndexOf('/')
     val base = url2.substring(0, lastSlash)
     val collection = url2.substring(lastSlash + 1)
-    val regex: Regex = "\"status\"\\:(\\d+)\\,".r
+    val regex: Regex = "\"status\":(\\d+),".r
 
     Try(Http(s"$base/admin/cores?action=UNLOAD&core=$collection&deleteIndex=true&deleteDataDir=true&deleteInstanceDir=true")
       .timeout(timeout, timeout).asString) match {

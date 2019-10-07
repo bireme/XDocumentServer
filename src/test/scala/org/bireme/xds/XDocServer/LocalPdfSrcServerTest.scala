@@ -30,7 +30,7 @@ class LocalPdfSrcServerTest extends FlatSpec {
   val solrUrl = "http://localhost:9292/solr/pdfs2"
   val sds = new SolrDocServer(solrUrl)
   val dir = new File("pdfs2")
-  val docServer = new FSDocServer(dir)
+  val docServer = new FSDocServer(dir, Some("pdf"))
   //val docServer = new SwayDBServer(dir)
   val lpds = new LocalPdfDocServer(docServer)
   val lpss = new LocalPdfSrcServer(sds, lpds)

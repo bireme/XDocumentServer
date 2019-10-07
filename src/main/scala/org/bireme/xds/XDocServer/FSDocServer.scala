@@ -16,7 +16,16 @@ import java.util.{Calendar, Date}
 import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
 
-class FSDocServer(rootDir: File) extends DocumentServer {
+class FSDocServer(rootDir: File,
+                  fileExtension: Option[String] = None) extends DocumentServer {
+  val extension: String = fileExtension.map {
+    ext =>
+      val extt = ext.trim
+      if (extt.isEmpty) ""
+      else if (extt.head.equals('.')) extt
+      else s".$extt"
+  }.getOrElse("")
+
   // Create the root  directory if it does not exist
   Tools.createDirectory(rootDir)
 
@@ -39,7 +48,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
   override def getDocument(id: String): Either[Int, InputStream] = {
     val idT: String = id.trim
     val dir = new File(rootDir, idT)
-    val file = new File(dir, idT)
+    val file = new File(dir, s"$idT$extension")
 
     if (file.isFile || file.canRead) {
       Try(new FileInputStream(file)) match {
@@ -61,7 +70,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
                               info: Option[Map[String, Set[String]]] = None): Int = {
     val idT: String = id.trim
     val dir = new File(rootDir, idT)
-    val file = new File(dir, idT)
+    val file = new File(dir, s"$idT$extension")
     val infoFile = new File(dir, s"$idT.info")
     val buffer = Array.ofDim[Byte](1024)
 
@@ -90,7 +99,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
                               info: Option[Map[String, Set[String]]]): Int = {
     val idT: String = id.trim
     val dir = new File(rootDir, idT)
-    val file = new File(dir, idT)
+    val file = new File(dir, s"$idT$extension")
     val infoFile = new File(dir, s"$idT.info")
 
     if (file.exists() || infoFile.exists()) 409
@@ -160,7 +169,7 @@ class FSDocServer(rootDir: File) extends DocumentServer {
   override def deleteDocument(id: String): Int = {
     val idT: String = id.trim
     val dir = new File(rootDir, idT)
-    val file = new File(dir, idT)
+    val file = new File(dir, s"$idT$extension")
     val info = new File(dir, s"$idT.info")
 
     if (dir.exists()) {

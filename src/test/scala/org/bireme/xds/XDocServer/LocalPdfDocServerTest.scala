@@ -28,7 +28,7 @@ class LocalPdfDocServerTest extends FlatSpec {
 
   val dir: File = new File("pdfs2")
   Tools.deleteDirectory(dir)
-  val docServer = new FSDocServer(dir)
+  val docServer = new FSDocServer(dir, Some("pdf"))
   //val docServer = new SwayDBServer(dir)
   val lpds = new LocalPdfDocServer(docServer)
 
@@ -64,7 +64,7 @@ class LocalPdfDocServerTest extends FlatSpec {
         param =>
           val omap: Map[String, Set[String]] = Map("id" -> Set(param._1.trim), "url" -> Set(param._2.trim), "title" -> Set(param._3.trim), "year" -> Set(param._4.trim))
           lpds.getDocumentInfo(param._1) exists {
-            map => (map.toSet diff omap.toSet).size == 0
+            map => (map.toSet diff omap.toSet).isEmpty
           }
       }
     )

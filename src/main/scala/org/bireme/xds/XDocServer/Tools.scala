@@ -21,7 +21,7 @@ object Tools {
     val s1 = Normalizer.normalize(in.trim().toLowerCase(), Form.NFD)
     val s2 = s1.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "")
 
-    s2.replaceAll("[^\\w\\-]", "")  // Hifen
+    s2.replaceAll("[^\\w-]", "")  // Hifen
   }
 
   /**
@@ -54,7 +54,7 @@ object Tools {
   /**
     * Comvert an url into a input stream
     * @param urls input url string
-    * @return the output imput stream
+    * @return the output input stream
     */
   def url2InputStream(urls: String): Option[InputStream] = {
     Try {
@@ -72,6 +72,7 @@ object Tools {
     }
   }
 
+  @scala.annotation.tailrec
   private def getHttpInputStream(urls: String): InputStream = {
     val timeout = 4 * 60 * 1000
     val url: URL = new URL(urlEncode(urls))
