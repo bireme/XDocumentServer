@@ -34,7 +34,7 @@ class UpdateDocuments(pdfDocDir: String,
   val thumbDocServer = new FSDocServer(new File(thumbDir), Some("jpg"))
   //val thumbDocServer = new SwayDBServer(new File(thumbDir))
   val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
-  val mst: Master = MasterFactory.getInstance(decsPath).setEncoding("IBM850").open()
+  val mst: Master = MasterFactory.getInstance(decsPath).setEncoding("ISO8859-1").open()
 
   /**
     * Update the contents of only one document (metadata + pdf + thumbnail)
