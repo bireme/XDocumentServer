@@ -19,9 +19,8 @@ object Tools {
     require (in != null)
 
     val s1 = Normalizer.normalize(in.trim().toLowerCase(), Form.NFD)
-    val s2 = s1.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "")
 
-    s2.replaceAll("[^\\w-]", "")  // Hifen
+    s1.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "")
   }
 
   /**

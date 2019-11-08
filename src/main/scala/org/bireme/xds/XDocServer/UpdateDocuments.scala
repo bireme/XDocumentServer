@@ -9,9 +9,11 @@ package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayInputStream, File, IOException}
 
+import bruma.master._
 import io.circe._
 import io.circe.parser._
 
+import scala.collection.JavaConverters._
 import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
 
@@ -21,16 +23,18 @@ import scala.util.{Failure, Success, Try}
 class UpdateDocuments(pdfDocDir: String,
                       solrColUrl: String,
                       thumbDir: String,
+                      decsPath: String,
                       thumbServUrl: Option[String]) {
-  val fiadminApi = "https://fi-admin.bvsalud.org/api"
+  val fiadminApi: String = "https://fi-admin.bvsalud.org/api"
 
-  val pdfDocServer = new FSDocServer(new File(pdfDocDir), Some("pdf"))
+  val pdfDocServer: FSDocServer = new FSDocServer(new File(pdfDocDir), Some("pdf"))
   //val pdfDocServer = new SwayDBServer(new File(pdfDocDir))
   val lpds: LocalPdfDocServer = new LocalPdfDocServer(pdfDocServer)
   val lpss: LocalPdfSrcServer = new LocalPdfSrcServer(new SolrDocServer(solrColUrl), lpds)
   val thumbDocServer = new FSDocServer(new File(thumbDir), Some("jpg"))
   //val thumbDocServer = new SwayDBServer(new File(thumbDir))
   val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
+  val mst: Master = MasterFactory.getInstance(decsPath).setEncoding("IBM850").open()
 
   /**
     * Update the contents of only one document (metadata + pdf + thumbnail)
@@ -70,14 +74,13 @@ class UpdateDocuments(pdfDocDir: String,
   def addMissing(): Unit = {
     val (_, lpssIds, ltsIds) = getStoredIds(lpss, lts)
 
-
     getDocumentIds foreach {
       docId =>
         val lpssContains = lpssIds.contains(docId)
         val lstContains = ltsIds.contains(docId)
 
         if (!lpssContains || !lstContains) {
-          println(s"\n*** Processing document:$docId")
+          println(s"\n*** Processing document: $docId")
           getMetadata(docId) match {
             case Left(err) => println(s"--- Getting document metadata ERROR. id=$docId msg=$err")
             case Right(meta) =>
@@ -435,10 +438,59 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseDescriptor(elem: ACursor): Set[String] = {
-    val primary = parseDescriptor(elem.downField("descriptors_primary").downArray, Set[String]())
-    val secondary = parseDescriptor(elem.downField("descriptors_secondary").downArray, Set[String]())
+    val primary: Set[String] = parseDescriptor(elem.downField("descriptors_primary").downArray, Set[String]())
+    val secondary: Set[String] = parseDescriptor(elem.downField("descriptors_secondary").downArray, Set[String]())
 
-    primary ++ secondary
+    getDescriptorsText(primary ++ secondary)
+  }
+
+  private def getDescriptorsText(descr: Set[String]): Set[String] = {
+    descr.map(_.trim).foldLeft(Set[String]()) {
+      case (set, des) =>
+        if (des.startsWith("^d")) {
+          val content: String = des.substring(2)
+          Try(Integer.parseInt(content)) match {
+            case Success(mfn) => set ++ getDescriptorText(mfn)
+            case Failure(_) => set + content
+          }
+        } else set + des
+    }
+  }
+
+  private def getDescriptorText(mfn: Int): Set[String] = {
+    Try {
+      val record: Record = mst.getRecord(mfn)
+      val set1: Set[String] = Seq(1,2,3,4).foldLeft(Set[String]()) {
+        case (set, fld) =>
+          Try(record.getField(fld, 1).getContent) match {
+            case Success(content) =>
+              Option(content) match {
+                case Some(content1) => set + Tools.uniformString(content1)
+                case None => set
+              }
+            case Failure(_) => set
+          }
+      }
+      val set2: Set[String] = getFldSyns(record, 50)
+      val set3: Set[String] = getFldSyns(record, 23)
+
+      set1 ++ set2 ++ set3
+    } match {
+      case Success(value) => value
+      case Failure(_) => Set[String]()
+    }
+  }
+
+  private def getFldSyns(rec: Record,
+                         tag: Int): Set[String] = {
+    val subIds = Set('i', 'e', 'p')
+
+    rec.getFieldList(tag).asScala.foldLeft[Set[String]](Set()) {
+      case (set,fld) => fld.getSubfields.asScala.
+        filter(sub => subIds.contains(sub.getId)).foldLeft[Set[String]](set) {
+        case (s,sub) => s + Tools.uniformString(sub.getContent.trim())
+      }
+    }
   }
 
   @scala.annotation.tailrec
@@ -505,6 +557,7 @@ object UpdateDocuments extends App {
         "\n\nOPTIONS" +
         "\n\t-pdfDocDir=<dir> - directory where the pdf files will be stored" +
         "\n\t-thumbDir=<dir> - directory where the thumbnail files will be stored" +
+        "\n\t-decsPath=<path> - decs master file path" +
         "\n\t-solrColUrl=<url> - solr collection url. For ex: http://localhost:8983/solr/pdfs" +
         "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
         "\n\t[-docId=<id>] - update only one document whose id is <id>. if used, --onlyMissing parameter will br ignored" +
@@ -513,7 +566,7 @@ object UpdateDocuments extends App {
     )
     System.exit(1)
   }
-  if (args.length < 3) usage()
+  if (args.length < 4) usage()
 
   val parameters = args.foldLeft[Map[String, String]](Map()) {
     case (map, par) =>
@@ -531,6 +584,7 @@ object UpdateDocuments extends App {
 
   val pdfDocDir = parameters("pdfDocDir").trim
   val thumbDir = parameters("thumbDir").trim
+  val decsPath = parameters("decsPath").trim
   val solrColUrl = parameters("solrColUrl").trim
   val thumbServUrl: String = parameters.get("thumbServUrl") match {
     case Some(turl) => // http:/localhost:9090/thumbnailServer/getDocument
@@ -541,7 +595,7 @@ object UpdateDocuments extends App {
   val docId = parameters.get("docId").map(_.trim)
   val addMissing = parameters.contains("addMissing")
   val updChanged = parameters.contains("updateChanged")
-  val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, Some(thumbServUrl))
+  val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, decsPath, Some(thumbServUrl))
 
   docId match {
     case Some(did) =>

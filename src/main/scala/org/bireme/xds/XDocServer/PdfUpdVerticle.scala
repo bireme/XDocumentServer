@@ -6,11 +6,13 @@
   ==========================================================================*/
 
 package org.bireme.xds.XDocServer
+
 import io.vertx.lang.scala.ScalaVerticle
 import io.vertx.scala.core.eventbus.EventBus
 import wvlet.log.LogSupport
 
 class PdfUpdVerticle(pdfDocDir: String,
+                     decsDir: String,
                      solrColUrl: Option[String],
                      thumbDir: Option[String]) extends ScalaVerticle with LogSupport {
   override def start(): Unit = {
@@ -23,7 +25,7 @@ class PdfUpdVerticle(pdfDocDir: String,
         println(s"Processing update request id=$id")
 
         if (solrColUrl.isDefined && thumbDir.isDefined) {
-          val updDocs = new UpdateDocuments(pdfDocDir, solrColUrl.get, thumbDir.get, None)
+          val updDocs = new UpdateDocuments(pdfDocDir, solrColUrl.get, thumbDir.get, decsDir, None)
           if (!updDocs.updateOne(id)) {
             error(s"error in updating document id=$id")
           }

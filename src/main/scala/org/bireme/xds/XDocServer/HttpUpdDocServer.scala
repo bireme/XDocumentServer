@@ -16,6 +16,7 @@ import io.vertx.scala.ext.web.{Route, Router, RoutingContext}
 
 class HttpUpdDocServer(updServerPort: Int = 9393,
                        pdfDocDir: String,
+                       decsDir: String,
                        solrColUrl: Option[String],
                        thumbDir: Option[String]) {
   val vertx: Vertx = Vertx.vertx()
@@ -27,7 +28,7 @@ class HttpUpdDocServer(updServerPort: Int = 9393,
   val routeHello: Route = router.route(HttpMethod.GET, "/").blockingHandler(handleHello)
   val routeGet: Route = router.route(HttpMethod.GET, "/updDocServer/updDocument").blockingHandler(handleGetDocument)
   val routeGetRest: Route = router.route(HttpMethod.GET, "/updDocServer/updDocument/:id").blockingHandler(handleGetDocument)
-  val myVerticle = new PdfUpdVerticle(pdfDocDir, solrColUrl, thumbDir)
+  val myVerticle = new PdfUpdVerticle(pdfDocDir, decsDir, solrColUrl, thumbDir)
 
   implicit val executionContext: VertxExecutionContext = VertxExecutionContext(vertx.getOrCreateContext())
 
@@ -57,11 +58,11 @@ class HttpUpdDocServer(updServerPort: Int = 9393,
 
 object HttpUpdDocServer extends App {
   private def usage(): Unit = {
-    System.err.println("usage: HttpUpdDocServer -pdfDocDir=<dir> [-solrColUrl=<url>] [-thumbDir=<dir>] [-serverPort=<port>]")
+    System.err.println("usage: HttpUpdDocServer -pdfDocDir=<dir> -decsDir=<dir> [-solrColUrl=<url>] [-thumbDir=<dir>] [-serverPort=<port>]")
     System.exit(1)
   }
 
-  if (args.length < 1) usage()
+  if (args.length < 2) usage()
 
   // Parse parameters
   val parameters = args.foldLeft[Map[String,String]](Map()) {
@@ -74,13 +75,14 @@ object HttpUpdDocServer extends App {
       }
   }
 
-  val pdfDocDir: Option[String] = parameters.get("pdfDocDir")
+  val pdfDocDir: String = parameters("pdfDocDir")
+  val decsDir: String = parameters("decsDir")
   val solrColUrl: Option[String] = parameters.get("solrColUrl")
   val thumbDir: Option[String] = parameters.get("thumbDir")
   val updServerPort: Int = parameters.getOrElse("serverPort", "9393").toInt
 
   if (pdfDocDir.isEmpty) usage()
 
-  new HttpUpdDocServer(updServerPort, pdfDocDir.get, solrColUrl, thumbDir)
+  new HttpUpdDocServer(updServerPort, pdfDocDir, decsDir, solrColUrl, thumbDir)
   System.in.read()
 }

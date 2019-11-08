@@ -35,7 +35,13 @@ class FSDocServer(rootDir: File,
     */
   override def getDocuments: Set[String] = {
     rootDir.listFiles().foldLeft[Set[String]](Set()) {
-      case (set, file) => if (file.isDirectory) set + file.getName else set
+      case (set, file) =>
+        if (file.isDirectory) set
+        else {
+          val fname: String = file.getName
+          if (fname.endsWith(extension)) set + fname
+          else set
+        }
     }
   }
 

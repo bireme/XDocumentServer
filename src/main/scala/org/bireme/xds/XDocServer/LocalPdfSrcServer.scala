@@ -79,7 +79,7 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
       case Right(originalInfo: Map[String, Set[String]]) =>
         info match {
           case Some(inf) =>
-            val inf2 = inf.foldLeft(originalInfo) {
+            val inf2: Map[String, Set[String]] = inf.foldLeft(originalInfo) {
               case (map, kv) =>
                 inf.get(kv._1) match {
                   case Some(set) => map + (kv._1 -> (kv._2 ++ set))
@@ -98,9 +98,9 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
       case 200|201 =>
         pdfDocServer.getDocument(id) match {
           case Right(is: InputStream) =>
-            val is2 = new ByteArrayInputStream(Tools.inputStream2Array(is).get)
+            val is2: ByteArrayInputStream = new ByteArrayInputStream(Tools.inputStream2Array(is).get)
             is2.mark(Integer.MAX_VALUE)
-            val info2 = Some(createDocumentInfo(id, Some(is2), info) + ("url" -> Set(url)))
+            val info2: Option[Map[String, Set[String]]] = Some(createDocumentInfo(id, Some(is2), info) + ("url" -> Set(url)))
             is2.reset()
             val ret: Int = solrDocServer.createDocument(id, is2, info2)
             is2.close()

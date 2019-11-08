@@ -1,0 +1,25 @@
+ 1         Objetivo General
+
+El objetivo general del proyecto APP Atención Primaria en Salud (APS) es disminuir la iniquidad del acceso y uso de la información y evidencia científica por profesionales y gestores de salud .
+2         Objetivos Específicos
+
+Los objetivos específicos del proyecto son:
+
+    Promover el uso de información y evidencia científica en los servicios de atención a la salud;
+    Brindar información y evidencia científica relevantes a los profesionales y gestores de salud para apoyar sus procesos de trabajo y toma de decisiones; y
+    Ofrecer a los usuarios del APP una solución que facilite y agilice el acceso a la información relevante en su área de actuación.
+
+3         Resultados Esperados
+
+Los contenidos que serán accedidos en el APP deben ser seleccionados por expertos y revisados periódicamente, con vistas a facilitar su uso por los profesionales y gestores en la práctica de la atención a la salud. Esos contenidos serán fácilmente accedidos en cualquier dispositivo móvil (smartphone), permitiendo que el usuario realice búsquedas y visualice los documentos.
+
+ 
+
+Con base a este ámbito, son esperados los siguientes resultados:
+
+    Aplicativo para dispositivos móviles desarrollado para la plataforma Android y iOS, lo cual permitirá el usuario buscar y acceder a los documentos disponibles en el APP;
+    Sistema de gestión de los contenidos seleccionados por los expertos desarrollado;
+    Sistema de monitoreo de las estadísticas de acceso a los contenidos del APP;
+    Contenido seleccionado de acuerdo con el público-objetivo;
+    Acciones de comunicación implementadas de acuerdo al público-objetivo definido;
+    Equipo técnico del APP APS establecido para la gestión de los contenidos y mantenimiento, monitoreo del uso y soporte técnico del APP.
