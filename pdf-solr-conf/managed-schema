@@ -61,5 +61,6 @@
   <field name="col" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="ud" type="string" multiValued="false" indexed="false" stored="true"/>
   <field name="tu" type="string" multiValued="false" indexed="false" stored="true"/>
+  <field name="pu" type="string" multiValued="true" indexed="true" stored="true"/>
 
 </schema>

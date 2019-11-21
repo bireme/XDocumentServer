@@ -211,7 +211,8 @@ class UpdateDocuments(pdfDocDir: String,
       case (set, colId) =>
         Try {
           print(s"Loading ids from colId: $colId.")
-          val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&status=1&limit=0&format=json", "utf-8")
+          //val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&status=1&limit=0&format=json", "utf-8")
+          val src = Source.fromURL(s"$fiadminApi/bibliographic/?collection=$colId&limit=0&format=json", "utf-8")
           val content = src.getLines().mkString("\n")
           src.close()
           content
@@ -232,7 +233,8 @@ class UpdateDocuments(pdfDocDir: String,
 
   private def getMetadata(docId: String): Either[String, Map[String,Set[String]]] = {
     Try {
-      val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&status=1&limit=1&format=json", "utf-8")
+      //val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&status=1&limit=1&format=json", "utf-8")
+      val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&limit=1&format=json", "utf-8")
       val content: String = src.getLines().mkString("\n").trim
       src.close()
 
@@ -270,7 +272,8 @@ class UpdateDocuments(pdfDocDir: String,
         "com" -> comId,
         "col" -> colId,
         "ud" -> parseUpdDate(elem),
-        "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head)
+        "tu" -> parseThumbUrl(docId.head, if (url.isEmpty) "" else url.head),
+        "pu" -> parsePublisher(elem)
       )
       Some(map.filterNot(kv => kv._2.isEmpty))
     } else None
@@ -439,7 +442,8 @@ class UpdateDocuments(pdfDocDir: String,
 
   private def parseDescriptor(elem: ACursor): Set[String] = {
     val primary: Set[String] = parseDescriptor(elem.downField("descriptors_primary").downArray, Set[String]())
-    val secondary: Set[String] = parseDescriptor(elem.downField("descriptors_secondary").downArray, Set[String]())
+    //val secondary: Set[String] = parseDescriptor(elem.downField("descriptors_secondary").downArray, Set[String]())
+    val secondary: Set[String] = Set[String]()  // Renato 20191121
 
     getDescriptorsText(primary ++ secondary)
   }
@@ -541,6 +545,8 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseUpdDate(elem: ACursor): Set[String] = Set(elem.downField("updated_time").as[String].getOrElse(""))
+
+  private def parsePublisher(elem: ACursor): Set[String] = Set(elem.downField("publisher").as[String].getOrElse(""))
 
   private def parseThumbUrl(id: String,
                             url: String): Set[String] = thumbServUrl match {

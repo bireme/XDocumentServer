@@ -22,10 +22,12 @@ import scala.util.{Failure, Success, Try}
 object myPDFToImage {
   def convert(doc: InputStream): Option[InputStream] = {
     Try {
-      System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
-      System.setProperty("apple.awt.UIElement", "true")
-      Class.forName("sun.java2d.cmm.kcms.KcmsServiceProvider")
-      System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
+      val javaVersion: String = System.getProperty("java.version")
+      if (javaVersion.compareTo("1.8.0_191") < 0) {
+        System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
+        System.setProperty("apple.awt.UIElement", "true")
+        Class.forName("sun.java2d.cmm.kcms.KcmsServiceProvider")
+      }
 
       val quality = 1.0f
       val dpi = 48//96
