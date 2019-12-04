@@ -5,6 +5,7 @@
 
   ==========================================================================*/
 
+/*
 package org.bireme.xds.XDocServer
 
 import java.io._
@@ -232,4 +233,4 @@ class SwayDBServer(dbDir: File) extends DocumentServer {
 
     Map("id" -> Set(id), "date" -> Set(date)) ++ info.getOrElse(Map[String, Set[String]]())
   }
-}
+} */

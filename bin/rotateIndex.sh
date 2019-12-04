@@ -29,6 +29,6 @@ sleep 10s
 if [ -d "${COL_DIR}/pdfs" ]; then rm -r ${COL_DIR}/pdfs; fi
 #mv ${COL_DIR}/pdfs.new ${COL_DIR}/pdfs
 mv ${SERVER_DIR}/tmp/index/pdfs ${COL_DIR}
-${SOLR_DIR}/bin/solr start -p ${SOLR_PORT}
+${SOLR_DIR}/bin/solr start -m 2g -p ${SOLR_PORT}
 
 cd -

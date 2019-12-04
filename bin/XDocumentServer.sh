@@ -7,6 +7,8 @@ if [ "$WHOAMI" != "operacao" ]
     exit 1
 fi
 
+NOW=$(date +"%Y%m%d%H%M%S")
+
 XDOCSERVER_HOME=/home/javaapps/sbt-projects/XDocumentServer
 
 # Vai para diretório da aplicação XDocumentServer
@@ -64,11 +66,11 @@ fi
 # Gera os arquivos pdfs e thumbnails e o índice lucene
 if [ "$FULL_INDEXING" -eq 0 ]; then
   bin/startSolr.sh   # Se o Solr tiver caído, inicia-o
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > log.txt
+  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > log_$NOW.txt
   ret="$?"
 else
   bin/delstart.sh  # Reinicializa o índice pdfs e o servidor (que pode ficar com o índice em memória)
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > log.txt
+  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > log_$NOW.txt
   ret="$?"
 fi
 

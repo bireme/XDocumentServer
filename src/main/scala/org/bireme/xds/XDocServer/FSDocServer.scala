@@ -33,13 +33,22 @@ class FSDocServer(rootDir: File,
     * List the ids of all pdf documents
     * @return a set having all pdf document ids
     */
-  override def getDocuments: Set[String] = {
-    rootDir.listFiles().foldLeft[Set[String]](Set()) {
+  override def getDocuments: Set[String] = getDocuments(rootDir)
+
+  /**
+    * List the ids of all pdf documents
+    * @param root father directory
+    * @return a set having all pdf document ids
+    */
+  def getDocuments(root: File): Set[String] = {
+    val esize = extension.length
+
+    root.listFiles().foldLeft[Set[String]](Set()) {
       case (set, file) =>
-        if (file.isDirectory) set
+        if (file.isDirectory) set ++ getDocuments(file)
         else {
           val fname: String = file.getName
-          if (fname.endsWith(extension)) set + fname
+          if (fname.endsWith(extension)) set + fname.substring(0, fname.length - esize)
           else set
         }
     }

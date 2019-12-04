@@ -2,7 +2,7 @@ lazy val root = (project in file("."))
   .settings(
     inThisBuild(List(
       organization := "org.bireme",
-      scalaVersion := /*"2.13.0",*/ "2.12.8",  // swaydb nao tem ainda para scala 2.13
+      scalaVersion :=  "2.12.8",  // "2.13.1", vertx não tem
       version      := "0.1.0-SNAPSHOT"
     )),
     name := "XDocumentServer"
@@ -12,19 +12,19 @@ val pdfboxVersion = "2.0.17" //"2.0.16"
 val pdfboxAppVersion = "2.0.17" //"2.0.16"
 val jpef2000Version =  "1.3.0"
 val jaiImageioCoreVersion = "1.4.0"
-val sttpVersion = "1.6.7" //"1.6.0"
-val vertxVersion = "3.8.0" // "3.7.1"
-val solrCellVersion = "8.2.0" //"8.1.1"
-val restletVersion = "2.4.0"
+val sttpVersion = "1.7.2" //"1.6.7"
+val vertxVersion = "3.8.0" //"3.8.4" nao tem para scala 2.13
+val solrCellVersion = "8.3.1" //"8.2.0"
+val restletVersion = "2.4.2" //"2.4.0"
 val httpComponentsVersion = "4.5.10" //"4.5.9"
 val scalajHttpVersion = "2.4.2" //"2.4.1"
-val circeVersion = "0.12.1" //"0.11.1"
+val circeVersion = "0.12.3" //"0.12.1"
 val commonsIOVersion = "2.6"
 val hasherVersion = "1.2.0"
 val airframeVersion = "19.9.7" //"19.6.1"
 val hairyfotrVersion = "0.1.17"
-val scalaTestVersion = /*"3.2.0-M1"*/ "3.0.8"
-val swaydbVersion = /*"0.7.1"*/ "0.6"
+val scalaTestVersion = "3.1.0" //"3.0.8"
+//val swaydbVersion = "0.10.9" // "0.6"
 
 resolvers += "Restlet Repositories" at "http://maven.restlet.org"
 
@@ -47,8 +47,8 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % commonsIOVersion,
   "com.roundeights" %% "hasher" % hasherVersion,
   "org.wvlet.airframe" %% "airframe-log" % airframeVersion,
-  "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test",
-  "io.swaydb" %% "swaydb" % swaydbVersion
+  "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test"
+  //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 
 logBuffered in Test := false

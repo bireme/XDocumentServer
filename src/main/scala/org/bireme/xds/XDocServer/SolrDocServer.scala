@@ -84,7 +84,9 @@ class SolrDocServer(url: String) extends DocumentServer {
         }
         else if(response.is4xx) Left(404)
         else Left(500)
-      case Failure(_) => Left(500)
+      case Failure(err) =>
+        println(s"ERROR - getDocument errCode=$err id=$id url=${url1}query?q=id:$id" )
+        Left(500)
     }
   }
 
@@ -135,7 +137,9 @@ class SolrDocServer(url: String) extends DocumentServer {
                   //println(s"response=${response.body}")
                   response.code match {
                     case 200 => 201
-                    case _   => 500
+                    case err2 =>
+                      println(s"ERROR - createDocument errCode=$err2 id=$id Post -> url=${url1}update/extract")
+                      500
                   }
                 case Failure(exception) =>
                   println(s"exception=$exception")

@@ -74,26 +74,31 @@ class UpdateDocuments(pdfDocDir: String,
   def addMissing(): Unit = {
     val (_, lpssIds, ltsIds) = getStoredIds(lpss, lts)
 
-    getDocumentIds foreach {
-      docId =>
+    val docIds: Seq[String] = getDocumentIds.toSeq.sorted
+    val total: Int = docIds.size
+
+    docIds.zipWithIndex.foreach {
+      case (docId, index) =>
         val lpssContains = lpssIds.contains(docId)
         val lstContains = ltsIds.contains(docId)
 
         if (!lpssContains || !lstContains) {
-          println(s"\n*** Processing document: $docId")
+          println(s"\n>>> (${index + 1}/$total) Processing document id=$docId")
           getMetadata(docId) match {
             case Left(err) => println(s"--- Getting document metadata ERROR. id=$docId msg=$err")
             case Right(meta) =>
               meta.get("ur") match {
                 case None => println(s"--- Getting url from metadata ERROR. id=$docId")
                 case Some(url: Set[String]) =>
-                  if (!lpssContains) {
+                  if (lpssContains) println(s"+++ LocalPdfSrcServer document was OK.")
+                  else {
                     val code = lpss.createDocument(docId, url.head, Some(meta))
                     val prefix = if (code == 201) "+++" else "---"
                     val status = if (code == 201) "OK" else "ERROR"
                     println(s"$prefix LocalPdfSrcServer document creation $status. id=$docId url=${url.head} code=$code")
                   }
-                  if (!lstContains) {
+                  if (lstContains) println(s"+++ LocalThumbnailServer document was OK.")
+                  else {
                     val code = lts.createDocument(docId, url.head, None)
                     val prefix = if (code == 201) "+++" else "---"
                     val status = if (code == 201) "OK" else "ERROR"
@@ -110,11 +115,12 @@ class UpdateDocuments(pdfDocDir: String,
     */
   def updateChanged(): Unit = {
     val (_, lpssIds, ltsIds) = getStoredIds(lpss, lts)
-    val storedIds: Set[String] = lpssIds ++ lpssIds
+    val storedIds: Set[String] = lpssIds ++ ltsIds
+    val totalIds: Int = storedIds.size
 
-    storedIds.foreach {
-      docId =>
-        println(s"Checking document:$docId [if changed]")
+    storedIds.zipWithIndex.foreach {
+      case (docId, index) =>
+        println(s"\n>>> (${index + 1}/$totalIds) Checking document id=$docId [if changed]")
         getMetadata(docId) match {
           case Right(meta) =>
             if (meta.isEmpty) {    // Document was deleted in FI_Admin
@@ -160,32 +166,49 @@ class UpdateDocuments(pdfDocDir: String,
     lpss.deleteDocuments()
     lts.deleteDocuments()
 
-    getDocumentIds.foreach {
-      id =>
+    val docIds: Seq[String] = getDocumentIds.toSeq.sorted
+    val total: Int = docIds.size
+
+    docIds.zipWithIndex.foreach {
+      case (id, index) =>
+        print(s"\n>>> (${index+1}/$total) Loading id=$id ... ")
+
         getMetadata(id) match {
           case Right(meta) =>
             val id: Option[Set[String]] = meta.get("id")
             val url: Option[Set[String]] = meta.get("ur")
 
-            if (id.isEmpty && url.isEmpty) println("id and url are empty")
-            else if (id.isEmpty) println(s"---- Empty id. url=${url.get.head}")
-            else if (url.isEmpty) println(s"---- Empty url. id=${id.get.head}")
+            if (id.isEmpty && url.isEmpty) println("ERROR\n---- Id and url are empty")
+            else if (id.isEmpty) println(s"ERROR\n---- Empty id. url=${url.get.head}")
+            else if (url.isEmpty) println(s"ERROR\n---- Empty url. id=${id.get.head}")
             else {
               val idStr: String = id.get.head
               val urlStr: String = url.get.head
 
-              println(s"\nProcessing document:$idStr")
-              val code1 = lpss.createDocument(idStr, urlStr, Some(meta))
-              val prefix1 = if (code1 == 201) "+++" else "---"
-              val status1 = if (code1 == 201) "OK" else "ERROR"
-              println(s"$prefix1 LocalPdfSrcServer document creation $status1. id=$idStr url=$urlStr code=$code1")
+              Try(Tools.url2ByteArray(urlStr)) match {
+                case Success(opt) =>
+                  opt match {
+                    case Some(arr) =>
+                      //println(s"OK\n>>> Processing document:$idStr")
+                      println(s"OK")
+                      val bais = new ByteArrayInputStream(arr)
+                      bais.mark(Integer.MAX_VALUE)
+                      val code1 = lpss.createDocument(idStr, bais, Some(meta))
+                      val prefix1 = if (code1 == 201) "+++" else "---"
+                      val status1 = if (code1 == 201) "OK" else "ERROR"
+                      println(s"$prefix1 LocalPdfSrcServer document creation $status1. code=$code1 url=$urlStr")
 
-              val code2 = lts.createDocument(idStr, urlStr, None)
-              val prefix2 = if (code2 == 201) "+++" else "---"
-              val status2 = if (code2 == 201) "OK" else "ERROR"
-              println(s"$prefix2 LocalThumbnailServer document creation $status2. id=$idStr url=$urlStr code=$code2")
+                      bais.reset()
+                      val code2 = lts.createDocument(idStr, bais, None)
+                      val prefix2 = if (code2 == 201) "+++" else "---"
+                      val status2 = if (code2 == 201) "OK" else "ERROR"
+                      println(s"$prefix2 LocalThumbnailServer document creation $status2. code=$code2 url=$urlStr")
+                    case None => println(s"ERROR\n---- Loading url. id=$idStr url=$urlStr")
+                  }
+                case Failure(msg) => println(s"ERROR\n---- Loading url. id=$idStr url=$urlStr msg=$msg")
+              }
             }
-          case Left(msg) => println(s"---- Skipping document. id=$id msg=$msg")
+          case Left(msg) => println(s"ERROR\n---- Skipping document. id=$id msg=$msg")
         }
     }
   }
@@ -206,8 +229,12 @@ class UpdateDocuments(pdfDocDir: String,
     (docs1.intersect(docs2), docs1, docs2)
   }
 
+  /**
+    * Get the ids that are stored at FI-admin
+    * @return a set of ids that are stored at FI-admin
+    */
   private def getDocumentIds: Set[String] = {
-    val ids = getCollectionIds.getOrElse(Set[String]()).foldLeft(Set[String]()) {
+    val ids: Set[String] = getCollectionIds.getOrElse(Set[String]()).foldLeft(Set[String]()) {
       case (set, colId) =>
         Try {
           print(s"Loading ids from colId: $colId.")
@@ -231,10 +258,16 @@ class UpdateDocuments(pdfDocDir: String,
     ids
   }
 
+  /**
+    * @param docId document identifier
+    * @return a map of FI-admin document metadata (meta -> set(values)
+    */
   private def getMetadata(docId: String): Either[String, Map[String,Set[String]]] = {
+    val url: String = s"$fiadminApi/bibliographic/?id=$docId&limit=1&format=json"
+
     Try {
       //val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&status=1&limit=1&format=json", "utf-8")
-      val src = Source.fromURL(s"$fiadminApi/bibliographic/?id=$docId&limit=1&format=json", "utf-8")
+      val src: BufferedSource = Source.fromURL(url, "utf-8")
       val content: String = src.getLines().mkString("\n").trim
       src.close()
 
@@ -246,7 +279,9 @@ class UpdateDocuments(pdfDocDir: String,
           .getOrElse(Map[String,Set[String]]()))
         case Left(ex) => Left(ex.toString)
       }
-      case Failure(ex) => Left(ex.toString)
+      case Failure(ex) =>
+        println(s"ERROR - getMetadata id=$docId url=$url msg=${ex.toString}")
+        Left(ex.toString)
     }
   }
 
@@ -418,11 +453,26 @@ class UpdateDocuments(pdfDocDir: String,
     } else set
   }
 
-  private def parseDocUrl(elem: ACursor): Set[String] = {
-    elem.downField("electronic_address").downArray.downField("_u").as[String] match {
-      case Right(url) => Set[String](url)
-      case _ => Set[String]()
-    }
+  private def parseDocUrl(elem: ACursor): Set[String] = parseUrl(elem.downField("electronic_address").downArray)
+
+  /**
+    * @param elem an array element
+    * @return the url in the array that has the type 'pdf'
+    */
+  @scala.annotation.tailrec
+  private def parseUrl(elem: ACursor): Set[String] = {
+    if (elem.succeeded) {
+      elem.downField("_u").as[String] match {
+        case Right(url) =>
+          elem.downField("_q").as[String] match {
+            case Right(docType) =>
+              if (docType.trim.toLowerCase.equals("pdf")) Set(url)
+              else parseUrl(elem.right)
+            case _ => parseUrl(elem.right)
+          }
+        case _ => parseUrl(elem.right)
+      }
+    } else Set[String]()
   }
 
   private def parseLanguage(elem: ACursor): Set[String] = {
@@ -596,7 +646,7 @@ object UpdateDocuments extends App {
     case Some(turl) => // http:/localhost:9090/thumbnailServer/getDocument
       val url = turl.trim
       if (url.endsWith("/")) url else s"$url/"
-    case None =>  "http://thumbnailserver.bvsalud.org/getDocument/"
+    case None => "http://thumbnailserver.bvsalud.org/getDocument/"
   }
   val docId = parameters.get("docId").map(_.trim)
   val addMissing = parameters.contains("addMissing")

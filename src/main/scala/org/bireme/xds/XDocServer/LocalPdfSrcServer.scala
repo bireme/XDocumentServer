@@ -91,7 +91,9 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
         }
       case Left(err) => err match {
         case 404 => info.map(_ + ("url" -> Set(url)))
-        case 500 => None
+        case 500 =>
+          println(s"ERROR - pdfDocServer.getDocumentInfo err=$err id=$id")
+          None
       }
     }
     pdfDocServer.replaceDocument(id, url, newInfo) match {
@@ -105,10 +107,15 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
             val ret: Int = solrDocServer.createDocument(id, is2, info2)
             is2.close()
             is.close()
+            if (ret != 201) println(s"ERROR - solrDocServer.createDocument err=$ret id=$id")
             ret
-          case Left(err2) => err2
+          case Left(err2) =>
+            println(s"ERROR - pdfDocServer.getDocument err=$err2 id=$id")
+            err2
         }
-      case err3 => err3
+      case err3 =>
+        println(s"ERROR - createDocument/pdfDocServer.replaceDocument err=$err3 id=$id url=$url")
+        err3
     }
   }
 
