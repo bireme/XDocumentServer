@@ -9,8 +9,11 @@ package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayOutputStream, File, InputStream}
 import java.net._
+import java.security.cert.X509Certificate
 import java.text.Normalizer
 import java.text.Normalizer.Form
+
+import javax.net.ssl.{HostnameVerifier, HttpsURLConnection, SSLContext, SSLSession, TrustManager, X509TrustManager}
 
 import scala.util.{Failure, Success, Try}
 
@@ -51,7 +54,7 @@ object Tools {
   }
 
   /**
-    * Comvert an url into a input stream
+    * Convert an url into a input stream
     * @param urls input url string
     * @return the output input stream
     */
@@ -68,6 +71,17 @@ object Tools {
       case Failure(ex) =>
         println(s"--- Downloading error. url:$urls msg:${ex.toString}")
         None
+    }
+  }
+
+  /**
+    * Convert an url into a string
+    * @param urls input url string
+    * @return the output string
+    */
+  def url2String(urls: String): Option[String] = {
+    url2InputStream(urls).map {
+      is => scala.io.Source.fromInputStream(is).mkString
     }
   }
 
@@ -224,5 +238,31 @@ object Tools {
         case None => inf2 + (kv1._1 -> kv1._2)
       }
     }
+  }
+
+  // See: https://nakov.com/blog/2009/07/16/disable-certificate-validation-in-java-ssl-connections/
+  def disableCertificateValidation(): Unit = {
+
+    // Create a trust manager that does not validate certificate chains
+    val trustAllCerts = Array[TrustManager] {
+      new X509TrustManager() {
+        def getAcceptedIssuers: Array[java.security.cert.X509Certificate] = null
+        def checkClientTrusted(certs: Array[X509Certificate],
+                               authType: String): Unit = {}
+        def checkServerTrusted(certs: Array[X509Certificate],
+                               authType: String): Unit = {}
+      }
+    }
+
+    // Install the all-trusting trust manager
+    val sc: SSLContext = SSLContext.getInstance("SSL")
+    sc.init(null, trustAllCerts, new java.security.SecureRandom())
+    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory)
+
+    // Create all-trusting host name verifier
+    val allHostsValid: HostnameVerifier = (_: String, _: SSLSession) => true
+
+    // Install the all-trusting host verifier
+    HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid)
   }
 }

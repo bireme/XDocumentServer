@@ -9,16 +9,16 @@ package org.bireme.xds.XDocServer
 
 import java.io.File
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class LocalThumbnailServerTest extends FlatSpec {
+class LocalThumbnailServerTest extends AnyFlatSpec {
   // id(issn), url
   val parameters: Set[(String, String)] = Set(
-    ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf"),
-    ("2", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf"),
-    ("3", "http://www.escoladesaude.pr.gov.br/arquivos/File/TEXTOS_CURSO_VIGILANCIA/capacitacao_e_atualizacao_em_geoprocessamento_em_saude_3.pdf"),
-    ("4", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf"),
-    ("5", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf")
+    ("1b", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf"),
+    ("2b", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf"),
+    ("3b", "http://www.escoladesaude.pr.gov.br/arquivos/File/TEXTOS_CURSO_VIGILANCIA/capacitacao_e_atualizacao_em_geoprocessamento_em_saude_3.pdf"),
+    ("4b", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf"),
+    ("5b", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf")
   )
 
   val pdir = new File("pdfs2")
@@ -61,7 +61,7 @@ class LocalThumbnailServerTest extends FlatSpec {
       parameters.forall {
         param =>
           lts.getDocumentInfo(param._1) match {
-            case Right(map) => println(map); true
+            case Right(map) => /*println(map);*/ true
             case Left(_) => false
           }
       }

@@ -10,9 +10,9 @@ package org.bireme.xds.XDocServer
 import java.io.File
 import java.util
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class LocalPdfDocServerTest extends FlatSpec {
+class LocalPdfDocServerTest extends AnyFlatSpec {
   // id(issn), url, title, year
   val parameters: Set[(String, String, String, String)] = Set(
     ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
@@ -41,7 +41,11 @@ class LocalPdfDocServerTest extends FlatSpec {
               val map = Map("id" -> Set(param._1), "url" -> Set(param._2), "title" -> Set(param._3), "year" -> Set(param._4))
               val ret = lpds.createDocument(param._1, is, Some(map))
               is.close()
-              ret == 201
+              val ok = ret == 201
+              if (!ok) {
+                println(s"ERROR: url=${param._2} ret=$ret")
+              }
+              ok
           }
       }
     )
@@ -62,9 +66,11 @@ class LocalPdfDocServerTest extends FlatSpec {
     assert(
       parameters.forall {
         param =>
-          val omap: Map[String, Set[String]] = Map("id" -> Set(param._1.trim), "url" -> Set(param._2.trim), "title" -> Set(param._3.trim), "year" -> Set(param._4.trim))
+          val omap: Map[String, Set[String]] = Map("id" -> Set(param._1.trim), "url" -> Set(param._2.trim), "title" ->
+            Set(param._3.trim), "year" -> Set(param._4.trim))
           lpds.getDocumentInfo(param._1) exists {
-            map => (map.toSet diff omap.toSet).isEmpty
+            map =>
+              (map.toSet diff omap.toSet).isEmpty
           }
       }
     )

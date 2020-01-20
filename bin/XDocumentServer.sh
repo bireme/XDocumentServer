@@ -12,14 +12,12 @@ NOW=$(date +"%Y%m%d%H%M%S")
 XDOCSERVER_HOME=/home/javaapps/sbt-projects/XDocumentServer
 
 # Vai para diretório da aplicação XDocumentServer
-cd $XDOCSERVER_HOME
+cd $XDOCSERVER_HOME || exit
 
 # Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa somente os documentos pdfs não armazenados
 FULL_INDEXING=0
 
 JAVA_HOME=/usr/local/oracle-8-jdk
-J2SDKDIR=${JAVA_HOME}
-J2REDIR=${JAVA_HOME}/jre
 PATH=${JAVA_HOME}/bin:${PATH}
 
 # Servidor
@@ -158,14 +156,14 @@ if [ "${result}" -ne 0 ]; then
 fi
 
 # Compacta diretório com o índice pdfs
-cd $COL_DIR
+cd $COL_DIR || exit
 tar -cvzpf pdfsIndex.tgz pdfs
 result="$?"
 if [ "${result}" -ne 0 ]; then
   sendemail -f appofi@bireme.org -u "XDocumentServer - Directory 'pdfsIndex' compression ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na compactação do diretório 'pdfsIndex'" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
-cd -
+cd - || exit
 mv $COL_DIR/pdfsIndex.tgz .
 
 # Apaga diretório temporário de transferência no servidor de produção
@@ -277,7 +275,7 @@ if [ "${result}" -ne 0 ]; then
   exit 1
 fi
 
-cd -
+cd - || exit
 
 # Manda email avisando que a geração ocorreu corretamente
 sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents finished - `date '+%Y-%m-%d'`" -m "XDocumentServer - Processo de geracao de pdfs e/ou thumbnails finalizou corretamente" -a $XDOCSERVER_HOME/log.txt -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br

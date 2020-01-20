@@ -63,8 +63,8 @@ object GenerUrls extends App{
                 val urls = getUrls(fiadminApi, colId)
                 urls foreach {
                   case (id, url) =>
-                    if (outFile.isDefined) println(s"${comId}_$comId|$id|$url")
-                    writer.write(s"${comId}_$comId|$id|$url\n")
+                    if (outFile.isDefined) println(s"${comId}_$colId|$id|$url")
+                    writer.write(s"${comId}_$colId|$id|$url\n")
                 }
             }
         }

@@ -7,15 +7,15 @@
 
 package org.bireme.xds.XDocServer
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import scalaj.http.{Http, HttpResponse}
 
 import scala.util.{Failure, Success, Try}
 
-class HttpPdfSrcServerTest  extends FlatSpec {
+class HttpPdfSrcServerTest  extends AnyFlatSpec {
   // id(issn), url, title, year
   val parameters: Set[(String, String, String, String)] = Set(
-    ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
+    ("1x", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
       "Critérios Diagnósticos de Infecção Relacionada à Assistência à Saúde", "2013"),
     ("1677-7042", "http://pesquisa.in.gov.br/imprensa/jsp/visualiza/index.jsp?jornal=1&pagina=68&data=22/09/2017",
       "Politica Nacional de Atenção Básica (2017/PORTARIA)", "2017"),

@@ -8,6 +8,7 @@
 package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayInputStream, File, IOException}
+import java.nio.file.Files
 
 import bruma.master._
 import io.circe._
@@ -35,6 +36,8 @@ class UpdateDocuments(pdfDocDir: String,
   //val thumbDocServer = new SwayDBServer(new File(thumbDir))
   val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
   val mst: Master = MasterFactory.getInstance(decsPath).setEncoding("ISO8859-1").open()
+
+  Tools.disableCertificateValidation()
 
   /**
     * Update the contents of only one document (metadata + pdf + thumbnail)
@@ -165,6 +168,9 @@ class UpdateDocuments(pdfDocDir: String,
   def addAll(): Unit = {
     lpss.deleteDocuments()
     lts.deleteDocuments()
+
+    // Copying the default thumbnail into thumbnails directory
+    Files.copy(new File("./nothumb.jpg").toPath, new File("thumbnails/nothumb.jpg").toPath)
 
     val docIds: Seq[String] = getDocumentIds.toSeq.sorted
     val total: Int = docIds.size
@@ -338,20 +344,21 @@ class UpdateDocuments(pdfDocDir: String,
     }
   }
 
-  private def parseTitle(elem: ACursor): Set[String] = {
-    parseTitle(elem.downField("title_monographic").downArray, Set[String]())
-  }
+  private def parseTitle(elem: ACursor): Set[String] =
+    parseTitle(elem.downField("reference_title").downArray, Set[String]())
 
   @scala.annotation.tailrec
   private def parseTitle(elem: ACursor,
                          seq: Set[String]): Set[String] = {
     if (elem.succeeded) {
       val lang: String = elem.downField("_i").as[String].getOrElse("")
-      val text: String = elem.downField("text").as[String].getOrElse("")
+      val text1: String = elem.downField("text").as[String].getOrElse("")
+      val idx = text1.indexOf("|")
+      val text2: String = (if (idx == -1) text1 else text1.substring(idx + 1)).trim
 
-      if (text.isEmpty) parseTitle(elem.right, seq)
+      if (text2.isEmpty) parseTitle(elem.right, seq)
       else {
-        val langTxt = if (lang.isEmpty) lang else s"($lang) $text"
+        val langTxt = if (lang.isEmpty) text2 else s"($lang) $text2"
         parseTitle(elem.right, seq + langTxt)
       }
     } else seq

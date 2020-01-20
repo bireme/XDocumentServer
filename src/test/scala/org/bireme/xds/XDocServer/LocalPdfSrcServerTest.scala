@@ -10,19 +10,19 @@ package org.bireme.xds.XDocServer
 import java.io.{ByteArrayInputStream, File}
 import java.util
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class LocalPdfSrcServerTest extends FlatSpec {
+class LocalPdfSrcServerTest extends AnyFlatSpec {
   // id(issn), url, title, year
   val parameters: Set[(String, String, String, String)] = Set(
-    ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
+    ("1a", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
       "Critérios Diagnósticos de Infecção Relacionada à Assistência à Saúde", "2013"),
-    ("2", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf",
+    ("2a", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf",
       "Participação popular nas ações de educação em saúde", "2014"),
-    ("3", "http://www.escoladesaude.pr.gov.br/arquivos/File/TEXTOS_CURSO_VIGILANCIA/capacitacao_e_atualizacao_em_geoprocessamento_em_saude_3.pdf",
+    ("3a", "http://www.escoladesaude.pr.gov.br/arquivos/File/TEXTOS_CURSO_VIGILANCIA/capacitacao_e_atualizacao_em_geoprocessamento_em_saude_3.pdf",
       "Introdução à Estatística Espacial para a Saúde Pública ", "2007"),
-    ("4", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf", "Guia de Vigilância em Saúde", "2016"),
-    ("5", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf",
+    ("4a", "http://portalarquivos2.saude.gov.br/images/pdf/2016/agosto/25/GVS-online.pdf", "Guia de Vigilância em Saúde", "2016"),
+    ("5a", "http://www.who.int/mental_health/policy/Livroderecursosrevisao_FINAL.pdf",
       "LIVRO DE RECURSOS DA OMS SOBRE SAÚDE MENTAL, DIREITOS HUMANOS E LEGISLAÇÃO", "2005")
   )
 
@@ -155,16 +155,16 @@ class LocalPdfSrcServerTest extends FlatSpec {
 
   it should "replace the last document with the first" in {
     assert {
-      lpss.getDocumentInfo("1") match {
+      lpss.getDocumentInfo("1a") match {
         case Right(info) =>
-          lpss.getDocument("1") match {
+          lpss.getDocument("1a") match {
             case Right(is) =>
               val doc: Option[Array[Byte]] = Tools.inputStream2Array(is)
               is.close()
               doc exists {
                 doc1 =>
-                  lpss.replaceDocument("5", new ByteArrayInputStream(doc1), Some(info))
-                  lpss.getDocument("5") match {
+                  lpss.replaceDocument("5a", new ByteArrayInputStream(doc1), Some(info))
+                  lpss.getDocument("5a") match {
                     case Right(is2) =>
                       val doc2 = Tools.inputStream2Array(is2)
                       is2.close()
