@@ -344,24 +344,38 @@ class UpdateDocuments(pdfDocDir: String,
     }
   }
 
-  private def parseTitle(elem: ACursor): Set[String] =
-    parseTitle(elem.downField("reference_title").downArray, Set[String]())
+  private def parseTitle(elem: ACursor): Set[String] = {
+    val tit = parseTitle1(elem.downField("reference_title"))
+    println(s" Title = $tit")
+    tit
+  }
+
+  private def parseTitle1(elem: ACursor): Set[String] = {
+    if (elem.succeeded) {
+      val arrElem = elem.downArray
+      if (arrElem.succeeded) parseArrTitle(arrElem, Set[String]())
+      else { // Probably is of type <x> text </x>
+        val text: String = elem.as[String].getOrElse("")
+        val idx = text.indexOf("|")
+
+        Set((if (idx == -1) text else text.substring(idx + 1)).trim)
+      }
+    } else Set[String]()
+  }
 
   @scala.annotation.tailrec
-  private def parseTitle(elem: ACursor,
-                         seq: Set[String]): Set[String] = {
+  private def parseArrTitle(elem: ACursor,
+                            set: Set[String]): Set[String] = {
     if (elem.succeeded) {
-      val lang: String = elem.downField("_i").as[String].getOrElse("")
-      val text1: String = elem.downField("text").as[String].getOrElse("")
-      val idx = text1.indexOf("|")
-      val text2: String = (if (idx == -1) text1 else text1.substring(idx + 1)).trim
+      val lang: String = elem.downField("_i").as[String].getOrElse("").trim
+      val text: String = elem.downField("text").as[String].getOrElse("")
+      val idx = text.indexOf("|")
+      val text1: String = (if (idx == -1) text else text.substring(idx + 1)).trim
+      val langTxt = if (lang.isEmpty) text1 else s"($lang) $text1"
+      val set1 = if (text1.isEmpty) set else set + langTxt
 
-      if (text2.isEmpty) parseTitle(elem.right, seq)
-      else {
-        val langTxt = if (lang.isEmpty) text2 else s"($lang) $text2"
-        parseTitle(elem.right, seq + langTxt)
-      }
-    } else seq
+      parseArrTitle(elem.right, set1)
+    } else set
   }
 
   private def parseDocType(elem: ACursor): Set[String] = Set(elem.downField("literature_type").as[String].getOrElse(""))

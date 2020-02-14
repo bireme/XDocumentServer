@@ -3,7 +3,7 @@ lazy val root = (project in file("."))
     inThisBuild(List(
       organization := "org.bireme",
       scalaVersion :=  "2.12.8",  // "2.13.1", vertx não tem
-      version      := "0.1.0-SNAPSHOT"
+      version      := "1.0.0"
     )),
     name := "XDocumentServer"
   )
@@ -22,9 +22,11 @@ val circeVersion = "0.12.3" //"0.12.1"
 val commonsIOVersion = "2.6"
 val hasherVersion = "1.2.0"
 val airframeVersion = "20.1.1" //"19.12.4"
-val hairyfotrVersion = "0.1.17"
+//val hairyfotrVersion = "0.1.17"
 val scalaTestVersion = "3.1.0" //"3.0.8"
+val scalaXmlVersion = "1.2.0"
 //val swaydbVersion = "0.10.9" // "0.6"
+val playJsonVersion = "2.8.1"
 
 resolvers += "Restlet Repositories" at "http://maven.restlet.org"
 
@@ -47,7 +49,9 @@ libraryDependencies ++= Seq(
   "commons-io" % "commons-io" % commonsIOVersion,
   "com.roundeights" %% "hasher" % hasherVersion,
   "org.wvlet.airframe" %% "airframe-log" % airframeVersion,
-  "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test"
+  "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test",
+  //"org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
+  "com.typesafe.play" %% "play-json" % playJsonVersion
   //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 
@@ -55,7 +59,7 @@ logBuffered in Test := false
 trapExit := false
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Ywarn-unused")
-addCompilerPlugin("org.psywerx.hairyfotr" %% "linter" % hairyfotrVersion)
+//addCompilerPlugin("org.psywerx.hairyfotr" %% "linter" % hairyfotrVersion)
 
 test in assembly := {}
 
