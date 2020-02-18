@@ -27,6 +27,7 @@ val scalaTestVersion = "3.1.0" //"3.0.8"
 val scalaXmlVersion = "1.2.0"
 //val swaydbVersion = "0.10.9" // "0.6"
 val playJsonVersion = "2.8.1"
+val sqliteVersion = "3.30.1"
 
 resolvers += "Restlet Repositories" at "http://maven.restlet.org"
 
@@ -51,7 +52,8 @@ libraryDependencies ++= Seq(
   "org.wvlet.airframe" %% "airframe-log" % airframeVersion,
   "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test",
   //"org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
-  "com.typesafe.play" %% "play-json" % playJsonVersion
+  "com.typesafe.play" %% "play-json" % playJsonVersion,
+  "org.xerial" % "sqlite-jdbc" % sqliteVersion
   //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 

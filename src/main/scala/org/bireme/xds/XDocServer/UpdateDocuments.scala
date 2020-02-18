@@ -9,12 +9,13 @@ package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayInputStream, File, IOException}
 import java.nio.file.Files
+import java.util.regex.Pattern
 
 import bruma.master._
 import io.circe._
 import io.circe.parser._
 
-import scala.collection.JavaConverters._
+//import scala.collection.JavaConverters._
 import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
 
@@ -28,11 +29,11 @@ class UpdateDocuments(pdfDocDir: String,
                       thumbServUrl: Option[String]) {
   val fiadminApi: String = "https://fi-admin.bvsalud.org/api"
 
-  val pdfDocServer: FSDocServer = new FSDocServer(new File(pdfDocDir), Some("pdf"))
+  val pdfDocServer: DocumentServer = new FSDocServer(new File(pdfDocDir), Some("pdf"))
   //val pdfDocServer = new SwayDBServer(new File(pdfDocDir))
   val lpds: LocalPdfDocServer = new LocalPdfDocServer(pdfDocServer)
   val lpss: LocalPdfSrcServer = new LocalPdfSrcServer(new SolrDocServer(solrColUrl), lpds)
-  val thumbDocServer = new FSDocServer(new File(thumbDir), Some("jpg"))
+  val thumbDocServer: DocumentServer = new FSDocServer(new File(thumbDir), Some("jpg"))
   //val thumbDocServer = new SwayDBServer(new File(thumbDir))
   val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
   val mst: Master = MasterFactory.getInstance(decsPath).setEncoding("ISO8859-1").open()
@@ -522,11 +523,11 @@ class UpdateDocuments(pdfDocDir: String,
   private def getDescriptorsText(descr: Set[String]): Set[String] = {
     descr.map(_.trim).foldLeft(Set[String]()) {
       case (set, des) =>
-        if (des.startsWith("^d")) {
-          val content: String = des.substring(2)
-          Try(Integer.parseInt(content)) match {
+        val matcher = Pattern.compile("\\^d(\\d+)").matcher(des)
+        if (matcher.find) {
+          Try(Integer.parseInt(matcher.group(1))) match {
             case Success(mfn) => set ++ getDescriptorText(mfn)
-            case Failure(_) => set + content
+            case Failure(_) => set + des
           }
         } else set + des
     }
@@ -546,16 +547,18 @@ class UpdateDocuments(pdfDocDir: String,
             case Failure(_) => set
           }
       }
-      val set2: Set[String] = getFldSyns(record, 50)
+      /*val set2: Set[String] = getFldSyns(record, 50)
       val set3: Set[String] = getFldSyns(record, 23)
 
-      set1 ++ set2 ++ set3
+      set1 ++ set2 ++ set3*/
+      set1
     } match {
       case Success(value) => value
       case Failure(_) => Set[String]()
     }
   }
 
+  /*
   private def getFldSyns(rec: Record,
                          tag: Int): Set[String] = {
     val subIds = Set('i', 'e', 'p')
@@ -566,7 +569,7 @@ class UpdateDocuments(pdfDocDir: String,
         case (s,sub) => s + Tools.uniformString(sub.getContent.trim())
       }
     }
-  }
+  }*/
 
   @scala.annotation.tailrec
   private def parseDescriptor(elem: ACursor,

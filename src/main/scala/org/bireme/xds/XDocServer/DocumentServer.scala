@@ -28,6 +28,7 @@ trait DocumentServer {
     * Store a new document
     * @param id document identifier
     * @param source the source of the document content
+    * @param info metadata of the document
     * @return a http error code. 201(created), 409(conflict) is the id already exists or 500 (internal server error)
     */
   def createDocument(id: String,

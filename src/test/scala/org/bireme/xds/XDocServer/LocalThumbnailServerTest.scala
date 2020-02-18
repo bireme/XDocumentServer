@@ -61,7 +61,7 @@ class LocalThumbnailServerTest extends AnyFlatSpec {
       parameters.forall {
         param =>
           lts.getDocumentInfo(param._1) match {
-            case Right(map) => /*println(map);*/ true
+            case Right(_/*map*/) => /*println(map);*/ true
             case Left(_) => false
           }
       }
