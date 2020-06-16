@@ -21,13 +21,14 @@ import scala.util.{Failure, Success, Try}
 
 //https://github.com/bireme/fi-admin/wiki/API
 //http://basalto01.bireme.br:9292/solr/#/pdfs/query
+// curl http://localhost:9292/solr/admin/cores?action=STATUS
 
 class UpdateDocuments(pdfDocDir: String,
                       solrColUrl: String,
                       thumbDir: String,
                       decsPath: String,
                       thumbServUrl: Option[String]) {
-  val fiadminApi: String = "https://fi-admin.bvsalud.org/api"
+  val fiadminApi: String = "https://fi-admin-api.bvsalud.org/api"
 
   val pdfDocServer: DocumentServer = new FSDocServer(new File(pdfDocDir), Some("pdf"))
   //val pdfDocServer = new SwayDBServer(new File(pdfDocDir))
@@ -39,6 +40,9 @@ class UpdateDocuments(pdfDocDir: String,
   val mst: Master = MasterFactory.getInstance(decsPath).setEncoding("ISO8859-1").open()
 
   Tools.disableCertificateValidation()
+
+  // https://stackoverflow.com/questions/16541627/javax-net-ssl-sslexception-received-fatal-alert-protocol-version
+  System.setProperty("https.protocols", "TLSv1,TLSv1.1,TLSv1.2,TLSv1.3")
 
   /**
     * Update the contents of only one document (metadata + pdf + thumbnail)
@@ -87,7 +91,7 @@ class UpdateDocuments(pdfDocDir: String,
         val lstContains = ltsIds.contains(docId)
 
         if (!lpssContains || !lstContains) {
-          println(s"\n>>> (${index + 1}/$total) Processing document id=$docId")
+          println(s"\n>> (${index + 1}/$total) Processing document id=$docId")
           getMetadata(docId) match {
             case Left(err) => println(s"--- Getting document metadata ERROR. id=$docId msg=$err")
             case Right(meta) =>
@@ -334,7 +338,9 @@ class UpdateDocuments(pdfDocDir: String,
         Some(rex.findAllMatchIn(content).foldLeft(Set[String]()) {
           case (set, mat) => set + mat.group(1)
         })
-      case Failure(_) => None
+      case Failure(_) =>
+        println("Error: No collection id found!")
+        None
     }
   }
 
@@ -346,8 +352,8 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseTitle(elem: ACursor): Set[String] = {
-    val tit = parseTitle1(elem.downField("reference_title"))
-    println(s" Title = $tit")
+    val tit: Set[String] = parseTitle1(elem.downField("reference_title"))
+    println("Title = " + tit.headOption.getOrElse("") + "\"")
     tit
   }
 

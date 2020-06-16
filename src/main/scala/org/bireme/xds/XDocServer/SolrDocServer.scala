@@ -44,6 +44,9 @@ class SolrDocServer(url: String) extends DocumentServer {
         "tu")            // url do thumbnail
   val timeout: Int = 4 * 60 * 1000
 
+  // list Cores
+  //http://localhost:9292/solr/admin/cores?action=STATUS
+
   /**
     * List the : $xids of all pdf documents
     *

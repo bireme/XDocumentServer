@@ -29,6 +29,18 @@
       <filter class="solr.ASCIIFoldingFilterFactory" preserveOriginal="false" />
     </analyzer>
   </fieldType>
+  <fieldType name="text_keywords" class="solr.TextField" positionIncrementGap="100" multiValued="true">
+    <analyzer type="index">
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory" preserveOriginal="false" />
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory" preserveOriginal="false" />
+    </analyzer>
+  </fieldType>
   <fieldType name="plong" class="solr.LongPointField" docValues="true"/>
   <fieldType name="plongs" class="solr.LongPointField" docValues="true" multiValued="true"/>
   <field name="id" type="string" multiValued="false" indexed="true" required="true" stored="true"/>
@@ -39,12 +51,12 @@
   <field name="type" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="au" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="da" type="string" multiValued="false" indexed="true" stored="true"/>
-  <field name="kw" type="text_general" multiValued="true" indexed="true" stored="true"/>
+  <field name="kw" type="text_keywords" multiValued="true" indexed="true" stored="true"/>
   <field name="fo" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="ab" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="ur" type="string" multiValued="true" indexed="false" stored="true"/>
   <field name="la" type="string" multiValued="true" indexed="true" stored="true"/>
-  <field name="mh" type="text_general" multiValued="true" indexed="true" stored="true"/>
+  <field name="mh" type="text_keywords" multiValued="true" indexed="true" stored="true"/>
   <field name="com" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="col" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="ud" type="string" multiValued="false" indexed="false" stored="true"/>

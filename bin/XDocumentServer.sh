@@ -17,7 +17,8 @@ cd $XDOCSERVER_HOME || exit
 # Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa somente os documentos pdfs não armazenados
 FULL_INDEXING=0
 
-JAVA_HOME=/usr/local/oracle-8-jdk
+#JAVA_HOME=/usr/local/oracle-8-jdk
+JAVA_HOME=/usr/local/java11
 PATH=${JAVA_HOME}/bin:${PATH}
 
 # Servidor
@@ -25,6 +26,9 @@ SERVER=basalto01.bireme.br
 
 # Diretório da Solr
 SOLR_DIR=/usr/local/solr-7.5.0
+
+# Arquivo log
+LOG_FILE=$XDOCSERVER_HOME/logs/log_$NOW.txt
 
 # Porta do servidor Solr
 SOLR_PORT=9292
@@ -64,11 +68,11 @@ fi
 # Gera os arquivos pdfs e thumbnails e o índice lucene
 if [ "$FULL_INDEXING" -eq 0 ]; then
   bin/startSolr.sh   # Se o Solr tiver caído, inicia-o
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > log_$NOW.txt
+  /usr/local/sbt/bin/sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > $LOG_FILE
   ret="$?"
 else
   bin/delstart.sh  # Reinicializa o índice pdfs e o servidor (que pode ficar com o índice em memória)
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > log_$NOW.txt
+  /usr/local/sbt/bin/sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > $LOG_FILE
   ret="$?"
 fi
 
@@ -185,7 +189,7 @@ fi
 scp thumbnails.tgz ${TRANSFER}@${SERVER}:${SERVER_DIR}/tmp
 result="$?"
 if [ "${result}" -ne 0 ]; then
-  c -f appofi@bireme.org -u "XDocumentServer - Directory 'thumbnails' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'thumbnails' para $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  sendmail -f appofi@bireme.org -u "XDocumentServer - Directory 'thumbnails' transfer ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na transferência do diretório 'thumbnails' para $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
 
@@ -237,22 +241,22 @@ NOW=$(date +"%Y%m%d-%T")
 ssh ${TRANSFER}@${SERVER} mkdir -p ${SERVER_DIR}/old
 
 # Faz a rotação do diretório 'pdfs'
-ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/pdfs_$now.tgz -C ${SERVER_DIR} pdfs
+ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/pdfs_$NOW.tgz -C ${SERVER_DIR} pdfs
 ssh ${TRANSFER}@${SERVER} rm -r ${SERVER_DIR}/pdfs
 result="$?"
 if [ "${result}" -ne 0 ]; then
-  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'pdfs' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'pdfs' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'old/pdfs -> pdfs' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'old/pdfs -> pdfs' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
 ssh ${TRANSFER}@${SERVER} mv ${SERVER_DIR}/tmp/pdfs ${SERVER_DIR}/
 result="$?"
 if [ "${result}" -ne 0 ]; then
-  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'pdfs' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'pdfs' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Rotating 'tmp/pdfs -> ~' dir ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na rotação do diretório 'tmp/pdfs -> ~' em $SERVER:$SERVER_DIR/tmp" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
 
 # Faz a rotação do diretório 'thumbnails'
-ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/thumbnails_$now.tgz -C ${SERVER_DIR} thumbnails
+ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/thumbnails_$NOW.tgz -C ${SERVER_DIR} thumbnails
 ssh ${TRANSFER}@${SERVER} rm -r ${SERVER_DIR}/thumbnails
 result="$?"
 if [ "${result}" -ne 0 ]; then
@@ -267,7 +271,7 @@ if [ "${result}" -ne 0 ]; then
 fi
 
 # Faz a rotação do índice 'pdfs'
-ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/pdfs_index_$now.tgz -C ${COL_DIR} pdfs
+ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/pdfs_index_$NOW.tgz -C ${COL_DIR} pdfs
 ssh ${TRANSFER}@${SERVER} ${SERVER_DIR}/bin/rotateIndex.sh
 result="$?"
 if [ "${result}" -ne 0 ]; then
@@ -278,6 +282,7 @@ fi
 cd - || exit
 
 # Manda email avisando que a geração ocorreu corretamente
-sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents finished - `date '+%Y-%m-%d'`" -m "XDocumentServer - Processo de geracao de pdfs e/ou thumbnails finalizou corretamente" -a $XDOCSERVER_HOME/log_$NOW.txt -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents finished - `date '+%Y-%m-%d'`" -m "XDocumentServer - Processo de geracao de pdfs e/ou thumbnails finalizou corretamente" -a $LOG_FILE -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
 
 exit 0
+

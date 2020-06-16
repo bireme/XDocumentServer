@@ -85,29 +85,41 @@ object Tools {
     }
   }
 
-  @scala.annotation.tailrec
-  private def getHttpInputStream(urls: String): InputStream = {
-    val timeout = 4 * 60 * 1000
+  private def getHttpInputStream(urls: String,
+                                 times: Int = 3): InputStream = {
     val url: URL = new URL(urlEncode(urls))
-    val conn: HttpURLConnection = url.openConnection().asInstanceOf[HttpURLConnection]
 
-    conn.setConnectTimeout(timeout)
-    conn.setReadTimeout(timeout)
-    conn.setInstanceFollowRedirects(false)   // Make the logic below easier to detect redirections
-    conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+    Try {
+      val timeout = 4 * 60 * 1000
+      val conn: HttpURLConnection = url.openConnection().asInstanceOf[HttpURLConnection]
 
-    conn.getResponseCode match {
-      case HttpURLConnection.HTTP_MOVED_PERM | HttpURLConnection.HTTP_MOVED_TEMP =>
-        val location: String = conn.getHeaderField("Location")
-        val location2: String = URLDecoder.decode(location, "UTF-8")
-        val original: String = URLDecoder.decode(urls, "UTF-8")
-        if (location2.equals(original)) {
-          throw new Exception("invalid redirection")
-        }
-        val next: URL = new URL(url, location2)  // Deal with relative URLs
-        val url2: String = next.toExternalForm
-        getHttpInputStream(url2)
-      case _ => conn.getInputStream
+      conn.setConnectTimeout(timeout)
+      conn.setReadTimeout(timeout)
+      conn.setInstanceFollowRedirects(false) // Make the logic below easier to detect redirections
+      conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+      conn.setRequestProperty("Content-Security-Policy", "upgrade-insecure-requests")
+
+      conn.getResponseCode match {
+        case HttpURLConnection.HTTP_MOVED_PERM | HttpURLConnection.HTTP_MOVED_TEMP =>
+          val location: String = conn.getHeaderField("Location")
+          val location2: String = URLDecoder.decode(location, "UTF-8")
+          val original: String = URLDecoder.decode(urls, "UTF-8")
+          if (location2.equals(original)) {
+            throw new Exception("invalid redirection")
+          }
+          val next: URL = new URL(url, location2) // Deal with relative URLs
+          val url2: String = next.toExternalForm
+          getHttpInputStream(url2)
+        case _ => conn.getInputStream
+      }
+    } match {
+      case Success(is) => is
+      case Failure(ex) =>
+        if (url.getProtocol.equals("https")) {
+          if (times == 0) throw ex
+          Thread.sleep(30 * 1000)
+          getHttpInputStream(urls, times - 1)
+        } else throw ex
     }
   }
 

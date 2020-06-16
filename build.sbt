@@ -28,8 +28,10 @@ val scalaXmlVersion = "1.2.0"
 //val swaydbVersion = "0.10.9" // "0.6"
 val playJsonVersion = "2.8.1"
 val sqliteVersion = "3.30.1"
+val slickVersion = "3.3.1"
+val logbackVersion = "1.2.3"
 
-resolvers += "Restlet Repositories" at "http://maven.restlet.org"
+resolvers += "Restlet Repositories" at "https://maven.restlet.org"
 
 libraryDependencies ++= Seq(
   "org.apache.pdfbox" % "pdfbox" % pdfboxVersion,
@@ -53,7 +55,9 @@ libraryDependencies ++= Seq(
   "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test",
   //"org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
   "com.typesafe.play" %% "play-json" % playJsonVersion,
-  "org.xerial" % "sqlite-jdbc" % sqliteVersion
+  "org.xerial" % "sqlite-jdbc" % sqliteVersion,
+  "com.typesafe.slick" %% "slick" % slickVersion,
+  "ch.qos.logback" % "logback-classic" % logbackVersion
   //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 
