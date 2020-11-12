@@ -149,6 +149,7 @@ class LocalPdfSrcServer(solrDocServer: SolrDocServer,
               }
             case err3 => err3
           }
+        case err4 => err4
       }
     }
   }

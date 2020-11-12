@@ -9,7 +9,7 @@ fi
 
 NOW=$(date +"%Y%m%d%H%M%S")
 
-XDOCSERVER_HOME=/home/javaapps/sbt-projects/XDocumentServer
+XDOCSERVER_HOME=/home/javaapps/sbt-projects/XDocumentServer-dev
 
 # Vai para diretório da aplicação XDocumentServer
 cd $XDOCSERVER_HOME || exit
@@ -17,7 +17,6 @@ cd $XDOCSERVER_HOME || exit
 # Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa somente os documentos pdfs não armazenados
 FULL_INDEXING=0
 
-#JAVA_HOME=/usr/local/oracle-8-jdk
 JAVA_HOME=/usr/local/java11
 PATH=${JAVA_HOME}/bin:${PATH}
 
@@ -25,19 +24,19 @@ PATH=${JAVA_HOME}/bin:${PATH}
 SERVER=basalto01.bireme.br
 
 # Diretório da Solr
-SOLR_DIR=/usr/local/solr-7.5.0
+SOLR_DIR=/usr/local/solr-8.5.2
 
 # Arquivo log
 LOG_FILE=$XDOCSERVER_HOME/logs/log_$NOW.txt
-
-# Porta do servidor Solr
-SOLR_PORT=9292
 
 # Diretório das coleções
 COL_DIR=$SOLR_DIR/server/solr
 
 # Diretório no servidor de produçao
-SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
+SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer-dev
+
+# Cria diretório de logs
+mkdir -p $XDOCSERVER_HOME/logs
 
 # Apaga o diretório de backup 'old'
 if [ -e "old" ]; then
@@ -68,11 +67,11 @@ fi
 # Gera os arquivos pdfs e thumbnails e o índice lucene
 if [ "$FULL_INDEXING" -eq 0 ]; then
   bin/startSolr.sh   # Se o Solr tiver caído, inicia-o
-  /usr/local/sbt/bin/sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > $LOG_FILE
+  /usr/local/sbt/bin/sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbs.bireme.org/  --addMissing --updateChanged" > $LOG_FILE
   ret="$?"
 else
   bin/delstart.sh  # Reinicializa o índice pdfs e o servidor (que pode ficar com o índice em memória)
-  /usr/local/sbt/bin/sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9292/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > $LOG_FILE
+  /usr/local/sbt/bin/sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbs.bireme.org/ " > $LOG_FILE
   ret="$?"
 fi
 
@@ -151,7 +150,7 @@ if [ "${result}" -ne 0 ]; then
   exit 1
 fi
 
-# Compacta diretório pdfs
+# Compacta diretório thumbnails
 tar -cvzpf thumbnails.tgz thumbnails
 result="$?"
 if [ "${result}" -ne 0 ]; then
@@ -270,8 +269,10 @@ if [ "${result}" -ne 0 ]; then
   exit 1
 fi
 
+# Faz a compressão do índice 'pdfs'
+ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/pdfs_index_$NOW.tgz -C ${COL_DIR}
+
 # Faz a rotação do índice 'pdfs'
-ssh ${TRANSFER}@${SERVER} tar -cvzpf ${SERVER_DIR}/old/pdfs_index_$NOW.tgz -C ${COL_DIR} pdfs
 ssh ${TRANSFER}@${SERVER} ${SERVER_DIR}/bin/rotateIndex.sh
 result="$?"
 if [ "${result}" -ne 0 ]; then

@@ -14,7 +14,7 @@ import java.util.{Calendar, Date}
 import io.circe.parser.parse
 import io.circe.{ACursor, HCursor, Json}
 import org.apache.commons.io.FileUtils
-import scalaj.http.{Http, HttpResponse}
+import scalaj.http.{Http, HttpRequest, HttpResponse}
 
 import scala.util.matching.Regex
 import scala.util.{Failure, Success, Try}
@@ -30,6 +30,8 @@ class SolrDocServer(url: String) extends DocumentServer {
     Set("id",            // identificador
         "ti",            // título
         "type",          // tipo de documento
+        "is",            // information source (biblio, leis, etc)
+        "mt",            // tipo de midia do documento (pdf, video, som, imagem, etc)
         "au",            // autor
         "da",            // ano
         "kw",            // palavras chave
@@ -45,12 +47,12 @@ class SolrDocServer(url: String) extends DocumentServer {
   val timeout: Int = 4 * 60 * 1000
 
   // list Cores
-  //http://localhost:9292/solr/admin/cores?action=STATUS
+  //http://localhost:9293/solr/admin/cores?action=STATUS
 
   /**
-    * List the : $xids of all pdf documents
+    * List the : ids of all documents
     *
-    * @return a set having all pdf document ids
+    * @return a set having all document ids
     */
   override def getDocuments: Set[String] = {
     val regex: Regex = "\"id\":\"([^\"]+)\"".r
@@ -126,28 +128,31 @@ class SolrDocServer(url: String) extends DocumentServer {
         Tools.inputStream2Array(source) match {
           case Some(arr) =>
             //println(s"arr size=${arr.length}")
-            if (arr.length == 0) 500
-            else {
-              Try(
+            val http: HttpRequest =
+              if (arr.length == 0) {
+                Http(url1 + "update/json/docs")
+                  .header("Content-type", "application/pdf")
+                  .timeout(timeout, timeout)
+                  .params(parameters)
+              } else {
                 Http(url1 + "update/extract")
                   .header("Content-type", "application/pdf")
                   .timeout(timeout, timeout)
                   .params(parameters)
                   .postData(arr)
-                  .asString
-              ) match {
-                case Success(response: HttpResponse[String]) =>
-                  //println(s"response=${response.body}")
-                  response.code match {
-                    case 200 => 201
-                    case err2 =>
-                      println(s"ERROR - createDocument errCode=$err2 id=$id Post -> url=${url1}update/extract")
-                      500
-                  }
-                case Failure(exception) =>
-                  println(s"exception=$exception")
-                  500
               }
+            Try(http.asString) match {
+              case Success(response: HttpResponse[String]) =>
+                //println(s"response=${response.body}")
+                response.code match {
+                  case 200 => 201
+                  case err2 =>
+                    println(s"ERROR - createDocument errCode=$err2 id=$id Post -> url=${url1}update/extract")
+                    500
+                }
+              case Failure(exception) =>
+                println(s"exception=$exception")
+                500
             }
           case None => 500
         }
@@ -310,7 +315,7 @@ class SolrDocServer(url: String) extends DocumentServer {
   }
 
   /**
-    * Retrieve metadata of a stored pdf document
+    * Retrieve metadata of a stored document
     *
     * @param id document identifier
     * @return the document metadata if found or 404 (not found) or 500 (internal server error)

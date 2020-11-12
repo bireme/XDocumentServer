@@ -50,7 +50,7 @@ class HttpUpdDocServer(updServerPort: Int = 9393,
     if (id.isEmpty) {
       response.setStatusCode(400).end("Missing id parameter")
     } else {
-      eventBus.publish("org.bireme.xds.UpdateDocuments.upd", id.get)
+      eventBus.publish("org.bireme.xds.UpdateDocuments.upd", Some(id.get))
       response.setStatusCode(200).end("Updating document")
     }
   }

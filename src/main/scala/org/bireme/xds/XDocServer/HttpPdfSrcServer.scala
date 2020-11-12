@@ -47,13 +47,13 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
       case (map, name) => map + (name -> params.getAll(name).toSet)
     }
 
-    if (mapParams.get("id").isEmpty) {
+    if (!mapParams.contains("id")) {
       response.setStatusCode(400).end("Missing id parameter")
-    } else if (mapParams.get("ur").isEmpty) {
+    } else if (!mapParams.contains("ur")) {
         response.setStatusCode(400).end("Missing url parameter")
     } else {
       val par: String = Tools.map2String(mapParams)
-      eventBus.publish("org.bireme.xds.XDocServer.put", par)
+      eventBus.publish("org.bireme.xds.XDocServer.put", Some(par))
       response.setStatusCode(200).end("Processing document")
     }
   }
@@ -71,7 +71,7 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
     if (id.isEmpty) {
       response.setStatusCode(400).end("Missing id parameter")
     } else {
-      eventBus.publish("org.bireme.xds.XDocServer.delete", id.get.head)
+      eventBus.publish("org.bireme.xds.XDocServer.delete", Some(id.get.head))
       response.setStatusCode(200).end("Deleting document")
     }
   }
@@ -89,7 +89,7 @@ class HttpPdfSrcServer(pdfSrcServer: LocalPdfSrcServer,
     if (id.isEmpty) {
       response.setStatusCode(400).end("Missing id parameter")
     } else {
-      eventBus.sendFuture[String]("org.bireme.xds.XDocServer.info", id.get.head).onComplete {
+      eventBus.sendFuture[String]("org.bireme.xds.XDocServer.info", Some(id.get.head)).onComplete {
         case Success(result) =>
           val str = result.body()
           if (str.equals("**")) {

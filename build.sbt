@@ -2,33 +2,33 @@ lazy val root = (project in file("."))
   .settings(
     inThisBuild(List(
       organization := "org.bireme",
-      scalaVersion :=  "2.12.8",  // "2.13.1", vertx não tem
+      scalaVersion :=  "2.12.11", //"2.12.8", "2.13.3", vertx não tem
       version      := "1.0.0"
     )),
     name := "XDocumentServer"
   )
 
-val pdfboxVersion = "2.0.18" //"2.0.17"
-val pdfboxAppVersion = "2.0.18" //"2.0.17"
+val pdfboxVersion = "2.0.21" //"2.0.20"
+val pdfboxAppVersion = "2.0.20" //"2.0.18"
 val jpef2000Version =  "1.3.0"
 val jaiImageioCoreVersion = "1.4.0"
 val sttpVersion = "1.7.2" //"1.6.7"
-val vertxVersion = "3.8.0" //"3.8.4" nao tem para scala 2.13
-val solrCellVersion = "8.4.1" //"8.3.1"
-val restletVersion = "2.4.2" //"2.4.0"
-val httpComponentsVersion = "4.5.10" //"4.5.9"
+val vertxVersion = "3.9.1" //"3.8.0" //"3.8.4" nao tem para scala 2.13
+val solrCellVersion = "8.5.2" //"8.4.1"
+val restletVersion = "2.4.3" //"2.4.2"
+val httpComponentsVersion = "4.5.13" //"4.5.12"
 val scalajHttpVersion = "2.4.2" //"2.4.1"
-val circeVersion = "0.12.3" //"0.12.1"
-val commonsIOVersion = "2.6"
+val circeVersion = "0.13.0" //"0.12.3"
+val commonsIOVersion = "2.8.0" //"2.7"
 val hasherVersion = "1.2.0"
-val airframeVersion = "20.1.1" //"19.12.4"
+val airframeVersion = "20.6.2"
 //val hairyfotrVersion = "0.1.17"
-val scalaTestVersion = "3.1.0" //"3.0.8"
+val scalaTestVersion = "3.2.3" //"3.2.0"
 val scalaXmlVersion = "1.2.0"
 //val swaydbVersion = "0.10.9" // "0.6"
-val playJsonVersion = "2.8.1"
-val sqliteVersion = "3.30.1"
-val slickVersion = "3.3.1"
+val playJsonVersion = "2.9.1" //"2.9.0"
+val sqliteVersion = "3.32.3.2" //"3.32.3"
+val slickVersion = "3.3.3" //"3.3.2"
 val logbackVersion = "1.2.3"
 
 resolvers += "Restlet Repositories" at "https://maven.restlet.org"
@@ -71,6 +71,6 @@ test in assembly := {}
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-  case x => MergeStrategy.first
+  case _ => MergeStrategy.first
 }
 

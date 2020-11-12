@@ -27,7 +27,7 @@ class LocalPdfSrcServerTest extends AnyFlatSpec {
   )
 
   //val solrUrl = "http://localhost:8989/solr/pdfs2"
-  val solrUrl = "http://localhost:9292/solr/pdfs2"
+  val solrUrl = "http://localhost:9293/solr/pdfs2"
   val sds = new SolrDocServer(solrUrl)
   val dir = new File("pdfs2")
   val docServer = new FSDocServer(dir, Some("pdf"))

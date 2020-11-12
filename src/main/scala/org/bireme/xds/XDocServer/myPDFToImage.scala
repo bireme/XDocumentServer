@@ -10,6 +10,10 @@ package org.bireme.xds.XDocServer
 import java.awt.image.BufferedImage
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
 
+import org.slf4j.LoggerFactory
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.ImageType
 import org.apache.pdfbox.rendering.PDFRenderer
@@ -20,15 +24,25 @@ import scala.util.{Failure, Success, Try}
 // Copied and adapted from Apache class PDFToImage (library PDFBox)
 
 object myPDFToImage {
+  {
+    val rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
+    //val rootLogger = LoggerFactory.getLogger("log4j.logger.org.apache.pdfbox")
+    val logbackRootLogger = rootLogger.asInstanceOf[Logger]
+    logbackRootLogger.setLevel(Level.INFO)
+    val rootLogger2 = LoggerFactory.getLogger("org.apache.pdfbox")
+    val logbackRootLogger2 = rootLogger2.asInstanceOf[Logger]
+    logbackRootLogger2.setLevel(Level.INFO)
+
+    val javaVersion: String = System.getProperty("java.version")
+    if (javaVersion.compareTo("1.8.0_191") < 0) {
+      System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
+      System.setProperty("apple.awt.UIElement", "true")
+      Class.forName("sun.java2d.cmm.kcms.KcmsServiceProvider")
+    }
+  }
+
   def convert(doc: InputStream): Option[InputStream] = {
     Try {
-      val javaVersion: String = System.getProperty("java.version")
-      if (javaVersion.compareTo("1.8.0_191") < 0) {
-        System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider")
-        System.setProperty("apple.awt.UIElement", "true")
-        Class.forName("sun.java2d.cmm.kcms.KcmsServiceProvider")
-      }
-
       val quality = 1.0f
       val dpi = 48//96
       val document: PDDocument = PDDocument.load(doc)

@@ -44,11 +44,16 @@
   <fieldType name="plong" class="solr.LongPointField" docValues="true"/>
   <fieldType name="plongs" class="solr.LongPointField" docValues="true" multiValued="true"/>
   <field name="id" type="string" multiValued="false" indexed="true" required="true" stored="true"/>
-  <field name="_text_" type="text_general" multiValued="true" indexed="true" stored="true"/>  
+  <field name="_text_" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="_version_" type="plong" indexed="false" stored="false"/>
 
-  <field name="ti" type="text_general" multiValued="true" indexed="true" stored="true"/> 
+  <field name="fi_admin_id" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="alternate_ids" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="status" type="text_keywords" multiValued="true" indexed="true" stored="true"/>
+  <field name="ti" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="type" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="is" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="mt" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="au" type="text_general" multiValued="true" indexed="true" stored="true"/>
   <field name="da" type="string" multiValued="false" indexed="true" stored="true"/>
   <field name="kw" type="text_keywords" multiValued="true" indexed="true" stored="true"/>
@@ -61,6 +66,12 @@
   <field name="col" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="ud" type="string" multiValued="false" indexed="false" stored="true"/>
   <field name="tu" type="string" multiValued="false" indexed="false" stored="true"/>
-  <field name="pu" type="string" multiValued="true" indexed="true" stored="true"/>
 
+  <field name="at" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="an" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="oi" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="sn" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="oe" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="ue" type="string" multiValued="true" indexed="true" stored="true"/>
 </schema>
+

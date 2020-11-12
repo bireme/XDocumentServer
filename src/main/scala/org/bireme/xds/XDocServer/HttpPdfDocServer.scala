@@ -115,7 +115,7 @@ object HttpPdfDocServer extends App {
 
   val pdfDir: String = parameters("pdfDir")
   //val serverPort: Int = parameters.getOrElse("serverPort", "8989").toInt
-  val serverPort: Int = parameters.getOrElse("serverPort", "9292").toInt
+  val serverPort: Int = parameters.getOrElse("serverPort", "9293").toInt
 
   if (pdfDir.isEmpty) usage()
 

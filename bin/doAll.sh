@@ -1,13 +1,11 @@
 #!/bin/bash
 
-JAVA_HOME=/usr/local/oracle-8-jdk
-J2SDKDIR=${JAVA_HOME}
-J2REDIR=${JAVA_HOME}/jre
+JAVA_HOME=/usr/local/java11
 PATH=${JAVA_HOME}/bin:${PATH}
 
-XDOCUMENTSERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
+XDOCUMENTSERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer-dev
 
-cd $XDOCUMENTSERVER_DIR/bin
+cd $XDOCUMENTSERVER_DIR/bin || exit
 
 ./delstart.sh
 
@@ -17,4 +15,4 @@ cd $XDOCUMENTSERVER_DIR/bin
 
 ./startThumbServer.sh
 
-cd - 
+cd - || exit
