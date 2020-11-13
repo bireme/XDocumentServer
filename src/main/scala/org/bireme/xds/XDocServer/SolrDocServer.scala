@@ -117,7 +117,11 @@ class SolrDocServer(url: String) extends DocumentServer {
         }
       }
       case None => List[(String,String)]()
-    }).map { case (x,y) => "literal." + x.trim -> y.trim } ++ List("defaultField" -> "_text_", "commit" -> "true")
+    }).map {
+      case (x,y) =>
+        val yy: String = y.trim
+        "literal." + x.trim -> yy.substring(0, Math.min(yy.length, 8000))
+    } ++ List("defaultField" -> "_text_", "commit" -> "true")
 
     getDocument(id) match {
       case Right(is) =>
@@ -127,7 +131,7 @@ class SolrDocServer(url: String) extends DocumentServer {
       case _ => // 404 (not found)
         Tools.inputStream2Array(source) match {
           case Some(arr) =>
-            //println(s"arr size=${arr.length}")
+            //println(s"Solr/createDocument arr size=${arr.length}")
             val http: HttpRequest =
               if (arr.length == 0) {
                 Http(url1 + "update/json/docs")
@@ -138,6 +142,7 @@ class SolrDocServer(url: String) extends DocumentServer {
                 Http(url1 + "update/extract")
                   .header("Content-type", "application/pdf")
                   .timeout(timeout, timeout)
+                  //.params(parameters.+:("multipartUploadLimitInKB", "-1"))
                   .params(parameters)
                   .postData(arr)
               }
@@ -147,7 +152,7 @@ class SolrDocServer(url: String) extends DocumentServer {
                 response.code match {
                   case 200 => 201
                   case err2 =>
-                    println(s"ERROR - createDocument errCode=$err2 id=$id Post -> url=${url1}update/extract")
+                    println(s"ERROR - createDocument errCode=$err2 id=$id Post -> url=${url1}update/extract Content=${response.body}")
                     500
                 }
               case Failure(exception) =>

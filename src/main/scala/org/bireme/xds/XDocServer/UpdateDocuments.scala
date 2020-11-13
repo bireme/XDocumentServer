@@ -17,6 +17,7 @@ import io.circe._
 import io.circe.parser._
 import scalaj.http.{Http, HttpResponse}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.Set
 import scala.util.matching.Regex
 import scala.io.{BufferedSource, Source}
@@ -429,6 +430,7 @@ class UpdateDocuments(pdfDocDir: String,
     getTotalCount(url).flatMap(getDocuments(url, 0, _, limit))
   }
 
+  @tailrec
   private def getTotalCount(url: String): Either[String, Int] = {
     Try {
       val src: BufferedSource = Source.fromURL(s"$url&limit=1", "utf-8")
@@ -440,7 +442,15 @@ class UpdateDocuments(pdfDocDir: String,
       case Success(value) =>
         val regex = "\"total_count\": (\\d+)".r
         Right(regex.findFirstMatchIn(value).map(mat => mat.group(1).toInt).getOrElse(0))
-      case Failure(ex) => Left(ex.toString)
+      case Failure(ex) =>
+        val msg: String = ex.getMessage
+        if (msg.contains("502")) {
+          println(s"warning: Bad Gateway error. Msg: [$msg]. Retrying url [$url]")
+          getTotalCount(url)
+        } else if (msg.contains("504")) {
+          println(s"warning: Gateway Timeout error. Msg: [$msg]. Retrying url [$url]")
+          getTotalCount(url)
+        } else Left(msg)
     }
   }
 
@@ -462,7 +472,15 @@ class UpdateDocuments(pdfDocDir: String,
           val noffset = offset + limit
           if (noffset < total) getDocuments(url, noffset, total, limit).map(content + _)
           else Right(content)
-        case Failure(ex) => Left(ex.toString)
+        case Failure(ex) =>
+          val msg: String = ex.getMessage
+          if (msg.contains("502")) {
+            println(s"warning: Bad Gateway error. Msg: [$msg]. Retrying url [$url]")
+            getDocuments(url, offset, total, limit)
+          } else if (msg.contains("504")) {
+            println(s"warning: Gateway Timeout error. Msg: [$msg]. Retrying url [$url]")
+            getDocuments(url, offset, total, limit)
+          } else Left(msg)
       }
     }
   }

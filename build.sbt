@@ -21,7 +21,7 @@ val scalajHttpVersion = "2.4.2" //"2.4.1"
 val circeVersion = "0.13.0" //"0.12.3"
 val commonsIOVersion = "2.8.0" //"2.7"
 val hasherVersion = "1.2.0"
-val airframeVersion = "20.6.2"
+val airframeVersion = "20.10.3" //"20.6.2"
 //val hairyfotrVersion = "0.1.17"
 val scalaTestVersion = "3.2.3" //"3.2.0"
 val scalaXmlVersion = "1.2.0"
@@ -30,34 +30,36 @@ val playJsonVersion = "2.9.1" //"2.9.0"
 val sqliteVersion = "3.32.3.2" //"3.32.3"
 val slickVersion = "3.3.3" //"3.3.2"
 val logbackVersion = "1.2.3"
+val luceneVersion = "8.7.0"
 
 resolvers += "Restlet Repositories" at "https://maven.restlet.org"
 
 libraryDependencies ++= Seq(
   "org.apache.pdfbox" % "pdfbox" % pdfboxVersion,
   "org.apache.pdfbox" % "pdfbox-app" % pdfboxAppVersion,
-  "com.github.jai-imageio" % "jai-imageio-jpeg2000" % jpef2000Version,
-  "com.github.jai-imageio" % "jai-imageio-core" % jaiImageioCoreVersion,
-  "com.softwaremill.sttp" %% "core" % sttpVersion,
+//  "com.github.jai-imageio" % "jai-imageio-jpeg2000" % jpef2000Version,
+//  "com.github.jai-imageio" % "jai-imageio-core" % jaiImageioCoreVersion,
+//  "com.softwaremill.sttp" %% "core" % sttpVersion,
   "io.vertx" %% "vertx-lang-scala" % vertxVersion,
   "io.vertx" %% "vertx-web-scala" % vertxVersion,
   //"com.github.takezoe" %% "solr-scala-client" % solrScalaClientVersion,
-  "org.restlet.jee" % "org.restlet" % restletVersion,
-  "org.apache.solr" % "solr-cell" % solrCellVersion,
-  "org.apache.httpcomponents" % "httpclient" % httpComponentsVersion,
+ // "org.restlet.jee" % "org.restlet" % restletVersion,
+ // "org.apache.solr" % "solr-cell" % solrCellVersion,
+  //"org.apache.httpcomponents" % "httpclient" % httpComponentsVersion,
   "org.scalaj" %% "scalaj-http" % scalajHttpVersion,
   "io.circe" %% "circe-core" % circeVersion,
-  "io.circe" %% "circe-generic" % circeVersion,
+  //"io.circe" %% "circe-generic" % circeVersion,
   "io.circe" %% "circe-parser" % circeVersion,
   "commons-io" % "commons-io" % commonsIOVersion,
   "com.roundeights" %% "hasher" % hasherVersion,
   "org.wvlet.airframe" %% "airframe-log" % airframeVersion,
   "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test",
   //"org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
-  "com.typesafe.play" %% "play-json" % playJsonVersion,
-  "org.xerial" % "sqlite-jdbc" % sqliteVersion,
-  "com.typesafe.slick" %% "slick" % slickVersion,
-  "ch.qos.logback" % "logback-classic" % logbackVersion
+  //"com.typesafe.play" %% "play-json" % playJsonVersion,
+  //"org.xerial" % "sqlite-jdbc" % sqliteVersion,
+  //"com.typesafe.slick" %% "slick" % slickVersion,
+  "ch.qos.logback" % "logback-classic" % logbackVersion,
+  "org.apache.lucene" % "lucene-core" % luceneVersion
   //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 
