@@ -34,7 +34,9 @@ class UpdateDocuments(pdfDocDir: String,
                       thumbServUrl: Option[String]) {
   val fiadminApi: String = "https://fi-admin-api.bvsalud.org/api"
   //val fiadminApi: String = "https://fi-admin.teste.bvsalud.org/api"
-  val infoSources: Map[String,String] = Map("bibliographic" -> "biblio", "leisref" -> "leisref")
+  val infoSources: Map[String,String] = Map("bibliographic" -> "biblio",
+                                            "leisref" -> "leisref",
+                                            "multimedia" -> "multimedia")
 
   val pdfDocServer: DocumentServer = new FSDocServer(new File(pdfDocDir), Some("pdf"))
   //val pdfDocServer = new SwayDBServer(new File(pdfDocDir))
@@ -408,7 +410,10 @@ class UpdateDocuments(pdfDocDir: String,
                              iSources: Map[String,String]): Either[String, Set[String]] = {
     if (iSources.isEmpty) Right(Set[String]())
     else {
-      val url: String = s"$fiadminApi/${iSources.head._1}/?collection=$colId&status=1&format=json"
+      val url: String = iSources.head._1 match {
+        case "multimedia" => s"$fiadminApi/${iSources.head._1}/?collection=$colId&format=json"
+        case other => s"$fiadminApi/$other/?collection=$colId&status=1&format=json"
+      }
       getDocuments(url).flatMap {
         content =>
           val rex: Regex = "\"id\": (\\d+)".r
@@ -599,7 +604,13 @@ class UpdateDocuments(pdfDocDir: String,
             "oi" -> parseOrganIssuer(elem),
             "sn" -> parseSourceName(elem),
             "oe" -> parseOfficialEmenta(elem),
-            "ue"-> parseUnofficialEmenta(elem)
+            "ue" -> parseUnofficialEmenta(elem)
+          )
+        } else if (isHead.equals("multimedia")) {
+          Map(
+            "co" -> parseContributors(elem),
+            "ex"  -> parseExtension(elem),
+            "de"  -> parseDescription(elem)
           )
         } else Map[String, Set[String]]()
       Some((meta1 ++ meta2).filterNot(kv => kv._2.isEmpty))
@@ -746,6 +757,7 @@ class UpdateDocuments(pdfDocDir: String,
     corporate_author_collection
     individual_author
     corporate_author
+    authors
    */
   private def parseAuthor(elem: ACursor): Set[String] = {
     val e = elem.downField("individual_author_monographic").downArray
@@ -765,7 +777,11 @@ class UpdateDocuments(pdfDocDir: String,
             else {
               val e = elem.downField("corporate_author").downArray
               if (e.succeeded) parseAuthor(e, Set[String]())
-              else Set[String]()
+              else {
+                val e = elem.downField("authors").downArray
+                if (e.succeeded) parseAuthor(e, Set[String]())
+                else Set[String]()
+              }
             }
           }
         }
@@ -833,7 +849,16 @@ class UpdateDocuments(pdfDocDir: String,
     } else set
   }
 
-  private def parseDocUrl(elem: ACursor): Set[String] = parseUrl(elem.downField("electronic_address").downArray)
+  private def parseDocUrl(elem: ACursor): Set[String] = {
+    val elem2: ACursor = elem.downField("electronic_address")
+    if (elem2.succeeded) parseUrl(elem2.downArray)
+    else {
+      elem.downField("link").as[String] match {
+        case Right(link) => Set[String](link)
+        case Left(_) => Set[String]()
+      }
+    }
+  }
 
   /**
     * @param elem an array element
@@ -966,20 +991,80 @@ class UpdateDocuments(pdfDocDir: String,
   private def parseThumbUrl(id: String,
                             url: String): Set[String] = thumbServUrl match {
     case Some(tsu) => Set(s"$tsu?id=$id&url=$url")
-    case None      => Set("")
+    case None => Set()
   }
 
-  private def parseActType(elem: ACursor): Set[String] = Set(elem.downField("act_type").as[String].getOrElse(""))
+  private def parseActType(elem: ACursor): Set[String] = {
+    elem.downField("act_type").as[String] match {
+      case Right(extension) => Set[String](extension)
+      case Left(_) => Set[String]()
+    }
+  }
 
-  private def parseActNumber(elem: ACursor): Set[String] = Set(elem.downField("act_number").as[String].getOrElse(""))
+  private def parseActNumber(elem: ACursor): Set[String] = {
+    elem.downField("act_number").as[String] match {
+      case Right(extension) => Set[String](extension)
+      case Left(_) => Set[String]()
+    }
+  }
 
-  private def parseOrganIssuer(elem: ACursor): Set[String] = Set(elem.downField("organ_issuer").as[String].getOrElse(""))
+  private def parseOrganIssuer(elem: ACursor): Set[String] = {
+    elem.downField("organ_issuer").as[String] match {
+      case Right(extension) => Set[String](extension)
+      case Left(_) => Set[String]()
+    }
+  }
 
-  private def parseSourceName(elem: ACursor): Set[String] = Set(elem.downField("source_name").as[String].getOrElse(""))
+  private def parseSourceName(elem: ACursor): Set[String] = {
+    elem.downField("source_name").as[String] match {
+      case Right(extension) => Set[String](extension)
+      case Left(_) => Set[String]()
+    }
+  }
 
-  private def parseOfficialEmenta(elem: ACursor): Set[String] = Set(elem.downField("official_ementa").as[String].getOrElse(""))
+  private def parseOfficialEmenta(elem: ACursor): Set[String] = {
+    elem.downField("official_ementa").as[String] match {
+      case Right(extension) => Set[String](extension)
+      case Left(_) => Set[String]()
+    }
+  }
 
-  private def parseUnofficialEmenta(elem: ACursor): Set[String] = Set(elem.downField("unofficial_ementa").as[String].getOrElse(""))
+  private def parseUnofficialEmenta(elem: ACursor): Set[String] = {
+    elem.downField("unofficial_ementa").as[String] match {
+      case Right(extension) => Set[String](extension)
+      case Left(_) => Set[String]()
+    }
+  }
+
+  private def parseContributors(elem: ACursor): Set[String] = {
+    if (elem.succeeded) parseArrContrib(elem.downArray, Set[String]())
+    else Set[String]()
+  }
+
+  @tailrec
+  private def parseArrContrib(elem: ACursor,
+                              set: Set[String]): Set[String] = {
+    if (elem.succeeded) {
+      val text: String = elem.downField("text").as[String].getOrElse("")
+
+      if (text.isEmpty) parseArrContrib(elem.right, set)
+      else parseArrContrib(elem.right, set + text)
+    } else set
+  }
+
+  private def parseExtension(elem: ACursor): Set[String] = {
+    elem.downField("item_extension").as[String] match {
+      case Right(extension) => Set[String](extension)
+      case Left(_) => Set[String]()
+    }
+  }
+
+  private def parseDescription(elem: ACursor): Set[String] = {
+    elem.downField("description").as[String] match {
+      case Right(description) => Set[String](description)
+      case Left(_) => Set[String]()
+    }
+  }
 }
 
 object UpdateDocuments extends App {

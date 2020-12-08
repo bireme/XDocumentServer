@@ -73,5 +73,8 @@
   <field name="sn" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="oe" type="string" multiValued="true" indexed="true" stored="true"/>
   <field name="ue" type="string" multiValued="true" indexed="true" stored="true"/>
-</schema>
 
+  <field name="co" type="string" multiValued="true" indexed="true" stored="true"/>
+  <field name="ex" type="string" multiValued="false" indexed="true" stored="true"/>
+  <field name="de" type="text_general" multiValued="false" indexed="true" stored="true"/>
+</schema>
