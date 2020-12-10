@@ -35,7 +35,9 @@ object IndexTest extends App {
     hitNum
   } match {
     case Success(h) => h
-    case Failure(_) => 0
+    case Failure(ex) =>
+      println(s"ERROR: ${ex.getMessage}")
+      0
   }
 //println(s"hits=$hits")
   val retValue = if (hits > 255) 255 else hits

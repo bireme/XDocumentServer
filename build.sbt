@@ -30,7 +30,7 @@ val playJsonVersion = "2.9.1" //"2.9.0"
 val sqliteVersion = "3.32.3.2" //"3.32.3"
 val slickVersion = "3.3.3" //"3.3.2"
 val logbackVersion = "1.2.3"
-val luceneVersion = "8.7.0"
+val luceneVersion = "8.5.2" //"8.7.0"
 
 resolvers += "Restlet Repositories" at "https://maven.restlet.org"
 
@@ -59,7 +59,8 @@ libraryDependencies ++= Seq(
   //"org.xerial" % "sqlite-jdbc" % sqliteVersion,
   //"com.typesafe.slick" %% "slick" % slickVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
-  "org.apache.lucene" % "lucene-core" % luceneVersion
+  "org.apache.lucene" % "lucene-core" % luceneVersion,
+  "org.apache.lucene" % "lucene-backward-codecs" % luceneVersion
   //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 

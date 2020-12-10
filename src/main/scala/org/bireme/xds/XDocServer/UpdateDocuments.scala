@@ -13,6 +13,7 @@ import java.nio.file.Files
 import java.util.regex.Pattern
 
 import bruma.master._
+
 import io.circe._
 import io.circe.parser._
 import scalaj.http.{Http, HttpResponse}
@@ -748,7 +749,8 @@ class UpdateDocuments(pdfDocDir: String,
     } else set
   }
 
-  private def parseDocType(elem: ACursor): Set[String] = Set(elem.downField("literature_type").as[String].getOrElse(""))
+  private def parseDocType(elem: ACursor): Set[String] = elem.downField("literature_type").as[String]
+    .getOrElse(elem.downField("act_type").as[String].getOrElse("")).trim.split("\\|").toSet
 
   /*
     individual_author_monographic
@@ -779,7 +781,8 @@ class UpdateDocuments(pdfDocDir: String,
               if (e.succeeded) parseAuthor(e, Set[String]())
               else {
                 val e = elem.downField("authors").downArray
-                if (e.succeeded) parseAuthor(e, Set[String]())
+                if (e.succeeded)
+                  parseAuthor(e, Set[String]())
                 else Set[String]()
               }
             }
@@ -793,7 +796,7 @@ class UpdateDocuments(pdfDocDir: String,
   private def parseAuthor(elem: ACursor,
                           set: Set[String]): Set[String] = {
     if (elem.succeeded) {
-      val text: String = elem.downField("text").as[String].getOrElse("")
+      val text: String = elem.as[String].getOrElse(elem.downField("text").as[String].getOrElse(""))
 
       if (text.isEmpty) parseAuthor(elem.right, set)
       else parseAuthor(elem.right, set + text)
@@ -801,7 +804,8 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseYear(elem: ACursor): Set[String] = {
-    val date = elem.downField("publication_date_normalized").as[String].getOrElse("")
+    val date = elem.downField("publication_date_normalized").as[String]
+      .getOrElse(elem.downField("publication_date").as[String].getOrElse("").replace("-", ""))
     val size = date.length
 
     Set(if (size == 0) ""
@@ -897,20 +901,35 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseDescriptor(elem: ACursor): Set[String] = {
-    val primary: Set[String] = parseDescriptor(elem.downField("descriptors_primary").downArray, Set[String]())
+    val descrArr: ACursor = elem.downField("descriptors_primary").downArray
+    val descrArr2: ACursor = if (descrArr.succeeded) descrArr
+                             else elem.downField("descriptors").downArray
+    val primary: Set[String] = parseDescriptor(descrArr2, Set[String]())
     val secondary: Set[String] = Set[String]()  // Renato 20191121
 
     getDescriptorsText(primary ++ secondary)
   }
 
+  @scala.annotation.tailrec
+  private def parseDescriptor(elem: ACursor,
+                              set: Set[String]): Set[String] = {
+    if (elem.succeeded) {
+      val text: String = elem.downField("text").as[String].getOrElse("")
+
+      if (text.isEmpty) parseDescriptor(elem.right, set)
+      else parseDescriptor(elem.right, set + text)
+    } else set
+  }
+
   private def getDescriptorsText(descr: Set[String]): Set[String] = {
     descr.map(_.trim).foldLeft(Set[String]()) {
       case (set, des) =>
-        val matcher = Pattern.compile("\\^d(\\d+)").matcher(des)
+        val matcher = Pattern.compile("\\^d([^\\^]+)").matcher(des)
         if (matcher.find) {
-          Try(Integer.parseInt(matcher.group(1))) match {
+          val descr: String = matcher.group(1)
+          Try(Integer.parseInt(descr)) match {
             case Success(mfn) => set ++ getDescriptorText(mfn)
-            case Failure(_) => set + des
+            case Failure(_) => set + descr
           }
         } else set + des
     }
@@ -935,17 +954,6 @@ class UpdateDocuments(pdfDocDir: String,
       case Success(value) => value
       case Failure(_) => Set[String]()
     }
-  }
-
-  @scala.annotation.tailrec
-  private def parseDescriptor(elem: ACursor,
-                              set: Set[String]): Set[String] = {
-    if (elem.succeeded) {
-      val text: String = elem.downField("text").as[String].getOrElse("")
-
-      if (text.isEmpty) parseDescriptor(elem.right, set)
-      else parseDescriptor(elem.right, set + text)
-    } else set
   }
 
   private def parseCommunity(elem: ACursor): Set[String] = {
@@ -1037,7 +1045,7 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def parseContributors(elem: ACursor): Set[String] = {
-    if (elem.succeeded) parseArrContrib(elem.downArray, Set[String]())
+    if (elem.succeeded) parseArrContrib(elem.downField("contributors").downArray, Set[String]())
     else Set[String]()
   }
 
