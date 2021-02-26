@@ -8,15 +8,11 @@
 package org.bireme.xds.XDocServer
 
 import java.io.{ByteArrayInputStream, File, IOException}
-import java.net.URL
 import java.nio.file.Files
 import java.util.regex.Pattern
-
 import bruma.master._
-
 import io.circe._
 import io.circe.parser._
-import scalaj.http.{Http, HttpResponse}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Set
@@ -46,44 +42,11 @@ class UpdateDocuments(pdfDocDir: String,
   val lpss: LocalPdfSrcServer = new LocalPdfSrcServer(sds, lpds)
   val thumbDocServer: DocumentServer = new FSDocServer(new File(thumbDir), Some("jpg"))
   //val thumbDocServer = new SwayDBServer(new File(thumbDir))
-  val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Right(lpds))
+  val lts: LocalThumbnailServer = new LocalThumbnailServer(thumbDocServer, Some(Right(lpds)))
   val mst: Master = MasterFactory.getInstance(decsPath).setEncoding("ISO8859-1").open()
+  val mtRecognizer: MediaTypeRecognizer = new MediaTypeRecognizer()
 
   Tools.disableCertificateValidation()
-
-  val videos: Set[String] = Set("3g2", "3gp", "amv", "asf", "avi", "drc", "f4a", "f4b", "f4p", "f4v", "flv", "gif",
-    "gifv", "m2ts", "m2v", "m4p", "m4v", "mkv", "mng", "mov", "mp2", "mp4", "mpe", "mpeg", "mpg", "mpv", "mts", "mxf",
-    "nsv", "ogg", "ogv", "qt", "rm", "rmvb", "roq", "svi", "ts", "vob", "webm", "wmv", "yuv")
-  val videoDomains: Set[String] = Set("coverr.co", "videezy.com", "videvo.net", "clipcanvas.com", "xstockvideo.com",
-   "cutestockfootage.com", "ignitemotion.com", "footagecrate.com", "pexels.com", "pixabay.com", "vimeo.com", "youtube.com")
-
-  val audios: Set[String] = Set("3gp", "8svx", "aa", "aac", "aax", "act", "aiff", "alac", "amr", "ape", "au", "awb",
-    "cda", "dct", "dss", "dvf", "flac", "gsm", "ikla", "ivs", "m4a", "m4b", "m4p", "mmf", "mp3", "mpc", "msv", "nmf",
-    "nsf", "ogg,", "opus", "ra,", "raw", "rf64", "sln", "tta", "voc", "vox", "wav", "webm", "wma", "wv")
-  val audioDomais: Set[String] = Set("soundcloud.com", "deezer.com", "apple.com", "music.google.com",
-    "gvtmusic.com.br", "mixrad.io", "napster.com", "rdio.com", "spotify.com", "tidal.com", "tunein.com",
-    "music.xbox.com","incompetech.com","purple-planet.com","soundimage.org","bensound.com","dig.ccmixter.org",
-    "sampleswap.org", "newgrounds.com", "playonloop.com", "jamendo.com")
-
-  val images: Set[String] = Set("jpg,", "jpeg,", "jpe", "jif,", "jfif,", "jfi", "png", "gif", "webp", "tiff", "tif",
-    "psd", "raw,", "arw", "cr2", "nrw", "k25", "bmp", "dib", "heif", "heic", "ind", "indd", "indt", "jp2", "j2k",
-    "jpf", "jpx", "jpm", "mj2", "svg", "svgz", "ai", "eps")
-  val imageDomais: Set[String] = Set("unsplash.com", "rawpixel.com", "freepik.es", "vintagestockphotos.com",
-    "morguefile.com", "pixabay.com", "rgbstock.com", "stockvault.net", "deathtothestockphoto.com", "libreshot.com",
-    "getrefe.com", "reshot.com", "offers.hubspot.com", "picjumbo.com", "nos.twnsnd.co", "focastock.com",
-    "commons.wikimedia.org", "wellcomecollection.org", "public-domain-photos.com", "picdrome.com",
-    "search.creativecommons.org", "imagebase.net", "insectimages.org", "creativity103.com", "usda.gov", "thestocks.im",
-    "startupstockphotos.com", "pexels.com", "startupstockphotos.com", "magdeleine.co",
-    "travelcoffeebook.com", "moveast.me", "thepatternlibrary.com", "publicdomainarchive.com", "foodiesfeed.com",
-    "picography.co", "flickr.com", "jaymantri.com", "sitebuilderreport.com", "kaboompics.com", "isorepublic.com",
-    "foter.com", "stocksnap.io", "skitterphoto.com", "focastock.com", "burst.shopify.com", "realisticshots.com",
-    "bucketlistly.blog", "gratisography.com", "splitshire.com", "lifeofpix.com", "negativespace.co",
-    "cupcake.nilssonlee.se", "epicantus.tumblr.com", "fancycrave.com", "albumarium.com", "flaticon.com",
-    "pt.vecteezy.com", "temqueter.org", "canva.com")
-
-  val presentations: Set[String] = Set("gslides", "key ", "keynote", "nb", "nbp", "odp", "otp", "pez", "pot", "pps",
-    "ppt", "pptx", "prz", "sdd", "shf", "show", "shw", "slp", "sspss", "sti", "sxi", "thmx", "watch")
-  val presentationDomains: Set[String] = Set("slideshare.net")
 
   // https://stackoverflow.com/questions/16541627/javax-net-ssl-sslexception-received-fatal-alert-protocol-version
   //System.setProperty("https.protocols", "TLSv1,TLSv1.1,TLSv1.2,TLSv1.3")
@@ -103,16 +66,17 @@ class UpdateDocuments(pdfDocDir: String,
       case Right(meta) =>
         val id: Option[Set[String]] = meta.get("id")
         val url: Option[Set[String]] = meta.get("ur")
-        val mtype: Option[Set[String]] = meta.get("mt")
-        val status: Option[Set[String]] = meta.get("status")
 
-        if (mtype.isEmpty || id.isEmpty || url.isEmpty) false
+        if (id.isEmpty || url.isEmpty) false
         else {
+
+          val mtype: MediaType = getMediaType(meta)
+          val status: Option[Set[String]] = meta.get("status")
           val idStr: String = id.get.head
           val urlStr: String = url.get.head
 
-          mtype.get.head match {
-            case "pdf" =>
+          mtype match {
+            case Pdf =>
               if (status.isDefined && status.get.head.equals("1")) {
                 Tools.url2ByteArray(urlStr).exists {
                   arr =>
@@ -121,18 +85,16 @@ class UpdateDocuments(pdfDocDir: String,
                     Try {
                       val b1: Boolean = lpss.replaceDocument(idStr, bais, Some(meta)) != 500 // LocalPdfSrcServer
                       bais.reset()
-                      b1 && lts.replaceDocument(idStr, bais, None) != 500 // LocalThumbnailServer
+                      b1 && lts.replaceDocument(idStr, bais, Pdf, None) != 500 // LocalThumbnailServer
                     }.isSuccess
                 }
-              } else {
-                val b1: Boolean = lpss.deleteDocument(idStr) != 500
-                b1 && lts.deleteDocument(idStr) != 500
-              }
+              } else (lpss.deleteDocument(idStr) != 500) && (lts.deleteDocument(idStr) != 500)
             case _ =>
               if (status.isDefined && status.get.head.equals("1")) {
-                sds.replaceDocument(idStr, urlStr, Some(meta)) != 500
+                (lts.replaceDocument(idStr, urlStr, Some(meta)) != 500) &&
+                (sds.replaceDocument(idStr, urlStr, Some(meta)) != 500)
               } else {
-                sds.deleteDocument(idStr) != 500
+                (lts.deleteDocument(idStr) != 500) && (sds.deleteDocument(idStr) != 500)
               }
           }
         }
@@ -157,14 +119,9 @@ class UpdateDocuments(pdfDocDir: String,
             getMetadata(docId) match {
               case Left(err) => println(s"--- Getting document metadata ERROR. id=$docId msg=$err")
               case Right(meta) =>
-                meta.get("mt") match {
-                  case Some(mType) =>
-                    if (mType.isEmpty) println(s"--- Empty media type ERROR. id=$docId")
-                    else {
-                      if (mType.head.trim.equals("pdf")) addMissingPdf(docId, lpssIds, ltsIds, meta)
-                      else addMissingOthers(docId, sdsIds, meta)
-                    }
-                  case None => println(s"--- Getting media type from metadata ERROR. id=$docId")
+                getMediaType(meta) match {
+                  case Pdf => addMissingPdf(docId, lpssIds, ltsIds, meta)
+                  case _   => addMissingOthers(docId, sdsIds, meta)
                 }
             }
         }
@@ -208,10 +165,16 @@ class UpdateDocuments(pdfDocDir: String,
     if (!sdsIds.contains(docId)) {
       println(s">>> Adding missing document id=$docId")
       val bais = new ByteArrayInputStream(Array.empty[Byte])
-      val code = sds.createDocument(docId, bais, Some(meta))
-      val prefix = if (code == 201) "+++" else "---"
-      val status = if (code == 201) "OK" else "ERROR"
-      println(s"$prefix SolrDocServer document creation $status. id=$docId code=$code")
+
+      val codeS = sds.createDocument(docId, bais, Some(meta))
+      val prefixS = if (codeS == 201) "+++" else "---"
+      val statusS = if (codeS == 201) "OK" else "ERROR"
+      println(s"$prefixS SolrDocServer document creation $statusS. id=$docId code=$codeS")
+
+      val codeT = lts.createDocument(docId, bais, getMediaType(meta), Some(meta))
+      val prefixT = if (codeT == 201) "+++" else "---"
+      val statusT = if (codeT == 201) "OK" else "ERROR"
+      println(s"$prefixT LocalThumbnailServer document creation $statusT. id=$docId code=$codeT")
     } else println(s"... document is not missing. id=$docId")
   }
 
@@ -267,6 +230,12 @@ class UpdateDocuments(pdfDocDir: String,
         val prefix1 = if (code1 == 200) "+++" else "---"
         val status1 = if (code1 == 200) "OK" else "ERROR"
         println(s"$prefix1 SolrDocServer document deletion $status1. id=$docId code=$code1")
+        if (ltsIds.contains(docId)) {
+          val code2 = lts.deleteDocument(docId)
+          val prefix2 = if (code2 == 200) "+++" else "---"
+          val status2 = if (code2 == 200) "OK" else "ERROR"
+          println(s"$prefix2 LocalThumbnailServer document deletion $status2. id=$docId code=$code2")
+        }
     }
   }
 
@@ -309,12 +278,11 @@ class UpdateDocuments(pdfDocDir: String,
               case Right(meta) =>
                 val id: Option[Set[String]] = meta.get("id")
                 val url: Option[Set[String]] = meta.get("ur")
-                val mtype: Option[Set[String]] = meta.get("mt")
+                val mtype: MediaType = getMediaType(meta)
 
                 if (id.isEmpty && url.isEmpty) println("ERROR\n---- Id and url are empty")
                 else if (id.isEmpty) println(s"ERROR\n---- Empty id. url=${url.get.head}")
                 else if (url.isEmpty) println(s"ERROR\n---- Empty url. id=${id.get.head}")
-                else if (mtype.isEmpty) println(s"ERROR\n---- Empty metadata. id=${id.get.head}")
                 else {
                   val idStr: String = id.get.head
                   val urlSet: Set[String] = url.get
@@ -323,9 +291,9 @@ class UpdateDocuments(pdfDocDir: String,
                   else {
                     val urlStr: String = url.get.head
 
-                    mtype.get.head match {
-                      case "pdf" => createPdfDocument(idStr, urlStr, meta)
-                      case _ => createOtherDocument(idStr, urlStr, meta)
+                    mtype match {
+                      case Pdf => createPdfDocument(idStr, urlStr, meta)
+                      case _   => createOtherDocument(idStr, urlStr, meta)
                     }
                   }
                 }
@@ -352,7 +320,7 @@ class UpdateDocuments(pdfDocDir: String,
             println(s"$prefix1 LocalPdfSrcServer document creation $status1. code=$code1 url=$url")
 
             bais.reset()
-            val code2 = lts.createDocument(id, bais, None)
+            val code2 = lts.createDocument(id, bais, Pdf, None)
             val prefix2 = if (code2 == 201) "+++" else "---"
             val status2 = if (code2 == 201) "OK" else "ERROR"
             println(s"$prefix2 LocalThumbnailServer document creation $status2. code=$code2 url=$url")
@@ -365,11 +333,15 @@ class UpdateDocuments(pdfDocDir: String,
   private def createOtherDocument(id: String,
                                   url: String,
                                   meta: Map[String,Set[String]]): Unit = {
-    //val code: Int = sds.replaceDocument(id, url, Some(meta))
-    val code: Int = sds.createDocument(id, url, Some(meta))
-    val prefix1 = if (code == 201) "+++" else "---"
-    val status1 = if (code == 201) "OK" else "ERROR"
-    println(s"$prefix1 SolrDocServer document creation $status1. code=$code url=$url")
+    val codeS: Int = sds.createDocument(id, url, Some(meta))
+    val prefixS = if (codeS == 201) "+++" else "---"
+    val statusS = if (codeS == 201) "OK" else "ERROR"
+    println(s"$prefixS SolrDocServer document creation $statusS. code=$codeS url=$url")
+
+    val codeT: Int = lts.createDocument(id, url, Some(meta))
+    val prefixT = if (codeT == 201) "+++" else "---"
+    val statusT = if (codeT == 201) "OK" else "ERROR"
+    println(s"$prefixT LocalThumbnailServer document creation $statusT. code=$codeT url=$url")
   }
 
   /**
@@ -492,7 +464,8 @@ class UpdateDocuments(pdfDocDir: String,
   }
 
   private def getCollectionIds: Either[String, Set[String]] = {
-    getCommunitiesIds.flatMap(comIds => getCollectionIds(comIds, Set[String]()))
+    getCommunitiesIds.flatMap(comIds =>
+      getCollectionIds(comIds, Set[String]()))
   }
 
   private def getCollectionIds(communitiesIds: Set[String],
@@ -500,7 +473,8 @@ class UpdateDocuments(pdfDocDir: String,
     if (communitiesIds.isEmpty) Right(buffer)
     else {
       getCollectionIds(communitiesIds.head).flatMap {
-        colIds => getCollectionIds(communitiesIds.tail, buffer ++ colIds)
+        colIds =>
+          getCollectionIds(communitiesIds.tail, buffer ++ colIds)
       }
     }
   }
@@ -580,7 +554,7 @@ class UpdateDocuments(pdfDocDir: String,
         "alternate_ids" -> parseAlternateIds(elem),
         "status" -> parseStatus(elem),
         "is" -> is,
-        "mt" -> getMediaType(url.headOption.getOrElse("")),
+        "mt" -> parseMediaType(url.headOption.getOrElse("")),
         "ti" -> parseTitle(elem),
         "type" -> parseDocType(elem),
         "au" -> parseAuthor(elem),
@@ -639,63 +613,6 @@ class UpdateDocuments(pdfDocDir: String,
     }
   }
 
-  private def getMediaType(urlStr: String): Set[String] = {
-    Try (new URL(urlStr)) match {
-      case Success(url) =>
-        val path = url.getPath
-        val pathT: String = path.trim.toLowerCase
-        val dotLastIndex: Int = pathT.lastIndexOf(".")
-        val extension: String = if (dotLastIndex == -1) ""
-        else {
-          val slashLastIndex: Int = pathT.lastIndexOf("/")
-          if (dotLastIndex > slashLastIndex) pathT.substring(dotLastIndex + 1).trim
-          else ""
-        }
-
-        Set(
-          extension match {
-            case "" =>
-              getMediaType(url) match {
-                case Some(x) => x
-                case None =>
-                  Try {
-                    val response: HttpResponse[String] = Http(urlStr).asString
-                    val headers: Map[String, IndexedSeq[String]] = response.headers
-
-                    headers.getOrElse("Location", Seq(urlStr)).head
-                  } match {
-                    case Success(newUrl) =>
-                      if (newUrl.nonEmpty && !newUrl.equals(urlStr.trim)) getMediaType(newUrl).head
-                      else "link"
-                    case Failure(ex) =>
-                      println(s"get MediaType ERROR: ${ex.toString}")
-                      ex.toString
-                  }
-              }
-            case "pdf" => "pdf"
-            case video if videos contains video => "video"
-            case audio if audios contains audio => "audio"
-            case presentation if presentations contains presentation => "presentation"
-            case image if images contains image => "image"
-            case _ => "link"
-          }
-        )
-      case Failure(ex) =>
-        println(s"get MediaType ERROR: ${ex.toString}")
-        Set[String](ex.toString)
-    }
-  }
-
-  private def getMediaType(url: URL): Option[String] = {
-    val domain: String = url.getHost
-
-    if (videoDomains.contains(domain)) Some("video")
-    else if (audioDomais.contains(domain)) Some("audio")
-    else if(imageDomais.contains(domain)) Some("image")
-    else if(presentationDomains.contains(domain)) Some("presentation")
-    else None
-  }
-
   private def parseId(elem: ACursor): Set[String] = {
     elem.downField("id").as[Int] match {
       case Right(id: Int) => Set[String](id.toString)
@@ -719,6 +636,13 @@ class UpdateDocuments(pdfDocDir: String,
     }
     println("Title = \"" + tit.headOption.getOrElse("") + "\"")
     tit
+  }
+
+  private def parseMediaType(url: String): Set[String] = {
+    url.trim match {
+      case "" => Set[String]()
+      case urlT => Set(mtRecognizer.getMediaType(urlT).getOrElse(Other).toString)
+    }
   }
 
   private def parseTitle1(elem: ACursor): Set[String] = {
@@ -1071,6 +995,22 @@ class UpdateDocuments(pdfDocDir: String,
     elem.downField("description").as[String] match {
       case Right(description) => Set[String](description)
       case Left(_) => Set[String]()
+    }
+  }
+
+  private def getMediaType(meta: Map[String,Set[String]]): MediaType = {
+    meta.get("ur") match {
+      case Some(ur) =>
+        meta.get("mt") match {
+          case Some(mt) => MediaType.fromString(mt.headOption.getOrElse(""))
+          case None =>
+            mtRecognizer.getMediaType(ur.headOption.getOrElse("")) match {
+              case Right(mt) => mt
+              case Left(_) => Other
+            }
+        }
+      case None =>
+        meta.get("mt").map(mt => MediaType.fromString(mt.headOption.getOrElse(""))).getOrElse(Other)
     }
   }
 }

@@ -15,8 +15,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 class LocalPdfDocServerTest extends AnyFlatSpec {
   // id(issn), url, title, year
   val parameters: Set[(String, String, String, String)] = Set(
-    ("1", "http://www.saude.pr.gov.br/arquivos/File/0SEGURANCA_DO_PACIENTE/modulo2.pdf",
-    "Critérios Diagnósticos de Infecção Relacionada à Assistência à Saúde", "2013"),
+    ("1", "http://repebis.upch.edu.pe/articulos/acta.med.per/v33n1/a5.pdf",
+    "Factores de riesgo para el abandono del tratamiento de tuberculosis pulmonar sensible en un establecimiento de salud de atención primaria, Lima, Perú", "2016"),
     ("2", "https://www.scielosp.org/article/ssm/content/raw/?resource_ssm_path=/media/assets/icse/v18s2/1807-5762-icse-18-s2-1389.pdf",
       "Participação popular nas ações de educação em saúde", "2014"),
     ("3", "http://www.escoladesaude.pr.gov.br/arquivos/File/TEXTOS_CURSO_VIGILANCIA/capacitacao_e_atualizacao_em_geoprocessamento_em_saude_3.pdf",

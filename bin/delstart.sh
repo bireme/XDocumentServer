@@ -12,7 +12,7 @@ $SOLR_PATH/bin/solr stop -p $SOLR_PORT
 $SOLR_PATH/bin/solr start -m 2g -p $SOLR_PORT
 
 $SOLR_PATH/bin/solr delete -c pdfs -p $SOLR_PORT
-
+sleep 15
 $SOLR_PATH/bin/solr create -c pdfs -d pdf-solr-conf -p $SOLR_PORT
 
 cd - || exit

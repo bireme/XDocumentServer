@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+export HORA_INICIO=`date '+%s'`
+export HI="`date '+%Y.%m.%d %H:%M:%S'`"
+
+echo "[TIME-STAMP] `date '+%Y.%m.%d %H:%M:%S'` [:INI:] Processa ${0} ${1} ${3} ${4} ${5}"
+echo ""
+
 WHOAMI=`whoami`
 if [ "$WHOAMI" != "operacao" ]
   then
@@ -120,6 +126,7 @@ if [ "$hitsLocal" -eq 0 ]; then
   if [ -e "${COL_DIR}/pdfs" ]; then
     rm -r  ${COL_DIR}/pdfs
   fi
+
   if [ -e "old/index/pdfs" ]; then
     mv old/index/pdfs ${COL_DIR}
   fi
@@ -280,10 +287,34 @@ if [ "${result}" -ne 0 ]; then
   exit 1
 fi
 
+# Apaga conteúdo do diretório tmp
+ssh ${TRANSFER}@${SERVER} rm -r ${SERVER_DIR}/tmp/*
+result="$?"
+if [ "${result}" -ne 0 ]; then
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Removing tmp contents ERROR - `date '+%Y%m%d'`" -m "XDocumentServer - Erro na remoção dos conteudos do diretório 'tmp' em $SERVER:$SERVER_DIR" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  exit 1
+fi
+
 cd - || exit
 
 # Manda email avisando que a geração ocorreu corretamente
 sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents finished - `date '+%Y-%m-%d'`" -m "XDocumentServer - Processo de geracao de pdfs e/ou thumbnails finalizou corretamente" -a $LOG_FILE -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+
+echo
+echo "DURACAO DE PROCESSAMENTO"
+echo "-------------------------------------------------------------------------"
+echo " - Inicio:  ${HI}"
+echo " - Termino: `date '+%Y.%m.%d %H:%M:%S'`"
+echo
+echo " Tempo de execucao: ${DURACAO} [s]"
+echo " Ou ${HORAS}h ${MINUTOS}m ${SEGUNDOS}s"
+echo
+
+# ------------------------------------------------------------------------- #
+echo "[TIME-STAMP] `date '+%Y.%m.%d %H:%M:%S'` [:FIM:] Processa  ${0} ${1} ${3} ${4} ${5}"
+# ------------------------------------------------------------------------- #
+echo
+
 
 exit 0
 
