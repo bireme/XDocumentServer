@@ -71,13 +71,13 @@ class UpdateDocuments(pdfDocDir: String,
         else {
 
           val mtype: MediaType = getMediaType(meta)
-          val status: Option[Set[String]] = meta.get("status")
+          //val status: Option[Set[String]] = meta.get("status")
           val idStr: String = id.get.head
           val urlStr: String = url.get.head
 
           mtype match {
             case Pdf =>
-              if (status.isDefined && status.get.head.equals("1")) {
+              //if (status.isDefined && status.get.head.equals("1")) {
                 Tools.url2ByteArray(urlStr).exists {
                   arr =>
                     val bais = new ByteArrayInputStream(arr)
@@ -88,14 +88,13 @@ class UpdateDocuments(pdfDocDir: String,
                       b1 && lts.replaceDocument(idStr, bais, Pdf, None) != 500 // LocalThumbnailServer
                     }.isSuccess
                 }
-              } else (lpss.deleteDocument(idStr) != 500) && (lts.deleteDocument(idStr) != 500)
+              //} else (lpss.deleteDocument(idStr) != 500) && (lts.deleteDocument(idStr) != 500)
             case _ =>
-              if (status.isDefined && status.get.head.equals("1")) {
+              //if (status.isDefined && status.get.head.equals("1")) {
                 (lts.replaceDocument(idStr, urlStr, Some(meta)) != 500) &&
                 (sds.replaceDocument(idStr, urlStr, Some(meta)) != 500)
-              } else {
-                (lts.deleteDocument(idStr) != 500) && (sds.deleteDocument(idStr) != 500)
-              }
+              //} else (lts.deleteDocument(idStr) != 500) && (sds.deleteDocument(idStr) != 500)
+
           }
         }
     }
@@ -385,7 +384,7 @@ class UpdateDocuments(pdfDocDir: String,
     else {
       val url: String = iSources.head._1 match {
         case "multimedia" => s"$fiadminApi/${iSources.head._1}/?collection=$colId&format=json"
-        case other => s"$fiadminApi/$other/?collection=$colId&status=1&format=json"
+        case other => s"$fiadminApi/$other/?collection=$colId&format=json" //s"$fiadminApi/$other/?collection=$colId&status=1&format=json"
       }
       getDocuments(url).flatMap {
         content =>
