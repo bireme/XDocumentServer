@@ -75,26 +75,35 @@ class LocalThumbnailServer(docServer: DocumentServer,
                      url: String,
                      info: Option[Map[String, Set[String]]]): Int = {
   mtRecognizer.getMediaType(url) match {
-      case Right(mtype) =>
-        mtype match {
-          case Pdf =>
-            Tools.url2InputStream(url) match {
-              case Some(is) =>
-                val ret = createDocument(id, is, mtype, info)
-                is.close()
-                ret
-              case None => 500
-            }
-          case Video =>
-            getVideoThumb(url) match {
-              case Right(is) =>
-                val ret = createDocument (id, is, mtype, info)
-                is.close ()
-                ret
-              case Left(_) => 500
-            }
-          case _ => 500
-        }
+    case Right(mtype) =>
+      mtype match {
+        case Pdf =>
+          Tools.url2InputStream(url) match {
+            case Some(is) =>
+              val ret = createDocument(id, is, mtype, info)
+              is.close()
+              ret
+            case None => 500
+          }
+        case Video =>
+          getVideoThumb(url) match {
+            case Right(is) =>
+              val ret = createDocument(id, is, mtype, info)
+              is.close()
+              ret
+            case Left(_) => 500
+          }
+        case Image =>
+          Tools.url2InputStream(url) match {
+            case Some(is) =>
+              val ret = createDocument(id, is, mtype, info)
+              is.close()
+              ret
+            case None => 500
+            case _ => 500
+          }
+        case _ => 500
+      }
       case Left(_) => 500
     }
   }
@@ -265,9 +274,9 @@ class LocalThumbnailServer(docServer: DocumentServer,
     url.trim match {
       case "" => Left(500)
       case urlT =>  //https://www.youtube.com/watch?v=Bf_YemfEaDs
-        "https://www.youtube.com/watch\\?v=([^\\&]+)".r.findFirstIn(urlT).map {
-          key =>
-            val thumbUrl: String = s"https://img.youtube.com/vi/$key/sddefault.jpg"
+        "https://www.youtube.com/watch\\?v=([^\\&]+)".r.findFirstMatchIn(urlT).map {
+          mat =>
+            val thumbUrl: String = s"https://img.youtube.com/vi/${mat.group(1)}/sddefault.jpg"
             Tools.url2InputStream(thumbUrl) match {
               case Some(is) => Right(is)
               case None => Left(500)

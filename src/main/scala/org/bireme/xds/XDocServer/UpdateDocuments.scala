@@ -13,6 +13,7 @@ import java.util.regex.Pattern
 import bruma.master._
 import io.circe._
 import io.circe.parser._
+import scalaj.http.{Http, HttpOptions, HttpResponse}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Set
@@ -89,12 +90,12 @@ class UpdateDocuments(pdfDocDir: String,
                     }.isSuccess
                 }
               //} else (lpss.deleteDocument(idStr) != 500) && (lts.deleteDocument(idStr) != 500)
-            case _ =>
+            case Video|Image =>
               //if (status.isDefined && status.get.head.equals("1")) {
                 (lts.replaceDocument(idStr, urlStr, Some(meta)) != 500) &&
                 (sds.replaceDocument(idStr, urlStr, Some(meta)) != 500)
               //} else (lts.deleteDocument(idStr) != 500) && (sds.deleteDocument(idStr) != 500)
-
+            case _ => sds.replaceDocument(idStr, urlStr, Some(meta)) != 500
           }
         }
     }
@@ -640,8 +641,30 @@ class UpdateDocuments(pdfDocDir: String,
   private def parseMediaType(url: String): Set[String] = {
     url.trim match {
       case "" => Set[String]()
-      case urlT => Set(mtRecognizer.getMediaType(urlT).getOrElse(Other).toString)
+      case urlT =>
+        val mt = mtRecognizer.getMediaType(urlT) match {
+          case Right(mt2) =>
+            mt2 match {
+              case Other => MTFromContent(url)
+              case x => x
+            }
+          case Left(_) => Other
+        }
+        Set(mt.toString)
     }
+  }
+
+  private def MTFromContent(url: String): MediaType = {
+    val response: HttpResponse[String] =
+      Http(url).option(HttpOptions.followRedirects(true)).asString
+    val contentType: String = response.contentType.getOrElse("")
+
+    if (contentType.startsWith("audio")) Audio
+    else if (contentType.startsWith("image")) Image
+    else if (contentType.startsWith("video")) Video
+    else if (contentType.startsWith("application/pdf")) Pdf
+    else if (contentType.startsWith("application/vnd.mspowerpoint")) Presentation
+    else Other
   }
 
   private def parseTitle1(elem: ACursor): Set[String] = {
@@ -796,13 +819,20 @@ class UpdateDocuments(pdfDocDir: String,
     if (elem.succeeded) {
       elem.downField("_u").as[String] match {
         case Right(url) =>
-          Set(url)
-          /*elem.downField("_q").as[String] match {
-            case Right(docType) =>
-              if (docType.trim.toLowerCase.equals("pdf")) Set(url)
-              else parseUrl(elem.right)
-            case _ => parseUrl(elem.right)
-          }*/
+          mtRecognizer.getMediaType(url) match {
+            case Right(mt) =>
+              mt match {
+                case Other =>
+                  elem.downField("_q").as[String] match {
+                    case Right(dtype) =>
+                      if (dtype.toLowerCase.equals("pdf")) Set(url)
+                      else parseUrl(elem.right)
+                    case _ => parseUrl(elem.right)
+                  }
+                case _ => Set(url)
+              }
+            case Left(_) => parseUrl(elem.right)
+          }
         case _ => parseUrl(elem.right)
       }
     } else Set[String]()
