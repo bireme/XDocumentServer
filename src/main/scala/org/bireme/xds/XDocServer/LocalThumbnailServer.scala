@@ -41,7 +41,8 @@ class LocalThumbnailServer(docServer: DocumentServer,
     val stream: InputStreamTap = Algo.sha1.tap(source) // Reuse inputstream to calculate hash and generate the thumbnail
 
     val isOpt: Option[InputStream] = mType match {
-      case Pdf => myPDFToImage.convert(stream)
+      case Pdf =>
+        myPDFToImage.convert(stream)
       case _ => Some(stream)
     }
 

@@ -2,14 +2,14 @@ lazy val root = (project in file("."))
   .settings(
     inThisBuild(List(
       organization := "org.bireme",
-      scalaVersion :=  "2.12.11", //"2.12.8", "2.13.3", vertx não tem
+      scalaVersion :=  "2.12.11", //"2.12.8", "2.13.7", vertx não tem
       version      := "1.0.0"
     )),
     name := "XDocumentServer"
   )
 
-val pdfboxVersion = "2.0.22" //"2.0.21"
-val pdfboxAppVersion = "2.0.22" //"2.0.20"
+val pdfboxVersion = "2.0.25" //"2.0.22"
+val pdfboxAppVersion = "2.0.25" //"2.0.22"
 val jpef2000Version =  "1.4.0"
 val jaiImageioCoreVersion = "1.4.0"
 //val sttpVersion = "1.7.2" //"1.6.7"
@@ -18,19 +18,19 @@ val solrCellVersion = "8.5.2" //"8.4.1"
 val restletVersion = "2.4.3" //"2.4.2"
 val httpComponentsVersion = "4.5.13" //"4.5.12"
 val scalajHttpVersion = "2.4.2" //"2.4.1"
-val circeVersion = "0.13.0" //"0.12.3"
-val commonsIOVersion = "2.8.0" //"2.7"
+val circeVersion = "0.14.1" //"0.13.0"
+val commonsIOVersion = "2.11.0" //"2.8.0"
 val hasherVersion = "1.2.0"
-val airframeVersion = "21.2.0" //"20.10.3"
+val airframeVersion = "22.1.0" //"21.2.0"
 //val hairyfotrVersion = "0.1.17"
-val scalaTestVersion = "3.2.5" //"3.2.3"
+val scalaTestVersion = "3.2.11" //"3.2.5"
 val scalaXmlVersion = "1.2.0"
 //val swaydbVersion = "0.10.9" // "0.6"
-val playJsonVersion = "2.9.1" //"2.9.0"
+val playJsonVersion = "2.9.2" //"2.9.1"
 val sqliteVersion = "3.32.3.2" //"3.32.3"
 val slickVersion = "3.3.3" //"3.3.2"
-val logbackVersion = "1.2.3"
-val luceneVersion = "8.5.2" //"8.7.0"
+val logbackVersion = "1.2.10" //"1.2.3"
+val luceneVersion = "9.0.0" //"8.5.2" //"8.7.0"
 
 resolvers += "Restlet Repositories" at "https://maven.restlet.org"
 
@@ -55,7 +55,7 @@ libraryDependencies ++= Seq(
   "org.wvlet.airframe" %% "airframe-log" % airframeVersion,
   "org.scalatest" % "scalatest_2.12" % scalaTestVersion % "test",
   //"org.scala-lang.modules" %% "scala-xml" % scalaXmlVersion,
-  //"com.typesafe.play" %% "play-json" % playJsonVersion,
+  "com.typesafe.play" %% "play-json" % playJsonVersion,
   //"org.xerial" % "sqlite-jdbc" % sqliteVersion,
   //"com.typesafe.slick" %% "slick" % slickVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
@@ -64,15 +64,15 @@ libraryDependencies ++= Seq(
   //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 
-logBuffered in Test := false
+Test / logBuffered := false
 trapExit := false
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Ywarn-unused")
 //addCompilerPlugin("org.psywerx.hairyfotr" %% "linter" % hairyfotrVersion)
 
-test in assembly := {}
+assembly / test := {}
 
-assemblyMergeStrategy in assembly := {
+assembly / assemblyMergeStrategy  := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
   case _ => MergeStrategy.first
 }

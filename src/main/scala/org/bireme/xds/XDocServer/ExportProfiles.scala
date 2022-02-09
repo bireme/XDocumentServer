@@ -11,8 +11,6 @@ import java.io.{File, Writer}
 import java.nio.charset.Charset
 import java.nio.file.{Files, StandardOpenOption}
 
-import org.bireme.infie.InfoImpExp
-
 object ExportProfiles extends App {
   private def usage(): Unit = {
     System.err.println("usage: ExportProfiles <options>")

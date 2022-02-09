@@ -13,7 +13,6 @@ import java.util.regex.Pattern
 import bruma.master._
 import io.circe._
 import io.circe.parser._
-import scalaj.http.{Http, HttpOptions, HttpResponse}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Set
@@ -22,8 +21,10 @@ import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
 
 //https://github.com/bireme/fi-admin/wiki/API
+//https://fi-admin-api.bvsalud.org/api
 //http://basalto01.bireme.br:9293/solr/#/pdfs/query
 //curl http://localhost:9293/solr/admin/cores?action=STATUS
+//http://thumbs2.bireme.org/biblio-1101794/biblio-1101794.jpg
 
 class UpdateDocuments(pdfDocDir: String,
                       solrColUrl: String,
@@ -70,7 +71,6 @@ class UpdateDocuments(pdfDocDir: String,
 
         if (id.isEmpty || url.isEmpty) false
         else {
-
           val mtype: MediaType = getMediaType(meta)
           //val status: Option[Set[String]] = meta.get("status")
           val idStr: String = id.get.head
@@ -82,12 +82,15 @@ class UpdateDocuments(pdfDocDir: String,
                 Tools.url2ByteArray(urlStr).exists {
                   arr =>
                     val bais = new ByteArrayInputStream(arr)
-                    bais.mark(Integer.MAX_VALUE)
+                    //bais.mark(Integer.MAX_VALUE)
                     Try {
                       val b1: Boolean = lpss.replaceDocument(idStr, bais, Some(meta)) != 500 // LocalPdfSrcServer
                       bais.reset()
                       b1 && lts.replaceDocument(idStr, bais, Pdf, None) != 500 // LocalThumbnailServer
-                    }.isSuccess
+                    } match {
+                      case Success(value) => value
+                      case Failure(_) => false
+                    }
                 }
               //} else (lpss.deleteDocument(idStr) != 500) && (lts.deleteDocument(idStr) != 500)
             case Video|Image =>
@@ -95,7 +98,9 @@ class UpdateDocuments(pdfDocDir: String,
                 (lts.replaceDocument(idStr, urlStr, Some(meta)) != 500) &&
                 (sds.replaceDocument(idStr, urlStr, Some(meta)) != 500)
               //} else (lts.deleteDocument(idStr) != 500) && (sds.deleteDocument(idStr) != 500)
-            case _ => sds.replaceDocument(idStr, urlStr, Some(meta)) != 500
+            case _ =>
+              val ret: Int = sds.replaceDocument(idStr, urlStr, Some(meta))
+              ret != 500
           }
         }
     }
@@ -488,8 +493,9 @@ class UpdateDocuments(pdfDocDir: String,
         val set: Set[String] = rex.findAllMatchIn(content).foldLeft(Set[String]()) {
           case (set, mat) => set + mat.group(1)
         }
-        if (set.isEmpty) Left(s"No collection id found in the $communityId!")
-        else Right(set)
+        //if (set.isEmpty) Left(s"No collection id found in the $communityId!")
+        //else Right(set)
+        Right(set)
     }
   }
 
@@ -512,7 +518,7 @@ class UpdateDocuments(pdfDocDir: String,
     * @param docId document identifier (<infoSource>-<num>)
     * @return a map of FI-admin document metadata (meta -> set(values)
     */
-  private def getMetadata(docId: String): Either[String, Map[String,Set[String]]] = {
+  def getMetadata(docId: String): Either[String, Map[String,Set[String]]] = {
     Try {
       val index = docId.indexOf('-')
       if (index == -1) throw new IllegalArgumentException(s"docId:$docId")
@@ -634,7 +640,7 @@ class UpdateDocuments(pdfDocDir: String,
         } else Set[String]()
       }
     }
-    println("Title = \"" + tit.headOption.getOrElse("") + "\"")
+    //println("Title = \"" + tit.headOption.getOrElse("") + "\"")
     tit
   }
 
@@ -642,29 +648,11 @@ class UpdateDocuments(pdfDocDir: String,
     url.trim match {
       case "" => Set[String]()
       case urlT =>
-        val mt = mtRecognizer.getMediaType(urlT) match {
-          case Right(mt2) =>
-            mt2 match {
-              case Other => MTFromContent(url)
-              case x => x
-            }
-          case Left(_) => Other
+        mtRecognizer.getMediaType(urlT) match {
+          case Right(mt) => Set(mt.toString)
+          case Left(_) => Set[String]()
         }
-        Set(mt.toString)
     }
-  }
-
-  private def MTFromContent(url: String): MediaType = {
-    val response: HttpResponse[String] =
-      Http(url).option(HttpOptions.followRedirects(true)).asString
-    val contentType: String = response.contentType.getOrElse("")
-
-    if (contentType.startsWith("audio")) Audio
-    else if (contentType.startsWith("image")) Image
-    else if (contentType.startsWith("video")) Video
-    else if (contentType.startsWith("application/pdf")) Pdf
-    else if (contentType.startsWith("application/vnd.mspowerpoint")) Presentation
-    else Other
   }
 
   private def parseTitle1(elem: ACursor): Set[String] = {
@@ -1031,7 +1019,16 @@ class UpdateDocuments(pdfDocDir: String,
     meta.get("ur") match {
       case Some(ur) =>
         meta.get("mt") match {
-          case Some(mt) => MediaType.fromString(mt.headOption.getOrElse(""))
+          case Some(mt) =>
+            mt.headOption.getOrElse("") match {
+              case "link" =>
+                mtRecognizer.getMediaType(ur.headOption.getOrElse("")) match {
+                  case Right(mt) => mt
+                  case Left(_) => Other
+                }
+              case str => MediaType.fromString(str)
+            }
+
           case None =>
             mtRecognizer.getMediaType(ur.headOption.getOrElse("")) match {
               case Right(mt) => mt
@@ -1055,7 +1052,8 @@ object UpdateDocuments extends App {
         "\n\t-decsPath=<path> - decs master file path" +
         "\n\t-solrColUrl=<url> - solr collection url. For ex: http://localhost:8983/solr/pdfs" +
         "\n\t[-thumbServUrl=<url>] - the thumbnail server url to be stored into metadata documents. For ex: http://localhost:9090/thumbnailServer/getDocument" +
-        "\n\t[-docId=<id>] - update only one document whose id is <id>. if used, --onlyMissing parameter will be ignored" +
+        "\n\t[-docId=<id>] - update only one document " +
+        "whose id is <id>. if used, the parameter --addMissing will be ignored" +
         "\n\t[--addMissing] - if present, will create pdf/thumbnail files only if they were not already created" +
         "\n\t[--updateChanged] - if present, will update pdf/thumbnail files whose metadata changed in the FI-Admin"
     )
@@ -1094,7 +1092,8 @@ object UpdateDocuments extends App {
 
   docId match {
     case Some(did) =>
-      updDocuments.updateOne(did)
+      val bool: Boolean = updDocuments.updateOne(did)
+      println(s"document [$did] was ${if (bool) "" else "NOT "}updated.")
     case None =>
       val addAll: Boolean = !(addMissing || updChanged)
 

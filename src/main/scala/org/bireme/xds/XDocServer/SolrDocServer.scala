@@ -10,7 +10,6 @@ package org.bireme.xds.XDocServer
 import java.io.{ByteArrayInputStream, File, InputStream}
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
-
 import io.circe.parser.parse
 import io.circe.{ACursor, HCursor, Json}
 import org.apache.commons.io.FileUtils
@@ -133,17 +132,19 @@ class SolrDocServer(url: String) extends DocumentServer {
           case Some(arr) =>
             //println(s"Solr/createDocument arr size=${arr.length}")
             val http: HttpRequest =
-              if (arr.length == 0) {
+              if (arr.isEmpty) {
                 Http(url1 + "update/json/docs")
                   .header("Content-type", "application/pdf")
                   .timeout(timeout, timeout)
                   .params(parameters)
               } else {
+                val arrLength: Int = arr.length
+                val parameters2: List[(String, String)] = parameters.+:("multipartUploadLimitInKB", s"${arrLength/1024 + 1}")
                 Http(url1 + "update/extract")
-                  .header("Content-type", "application/pdf")
+                  .headers(Seq(("Content-type", "application/pdf"), ("Content-Length", arrLength.toString)))
                   .timeout(timeout, timeout)
-                  //.params(parameters.+:("multipartUploadLimitInKB", "-1"))
-                  .params(parameters)
+                  .params(parameters2)
+                  //.params(parameters)
                   .postData(arr)
               }
             Try(http.asString) match {

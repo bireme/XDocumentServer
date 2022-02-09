@@ -1,6 +1,6 @@
 package org.bireme.xds.XDocServer
 
-import scalaj.http.{Http, HttpResponse}
+import scalaj.http.{Http, HttpOptions, HttpResponse}
 
 import java.net.URL
 import scala.collection.immutable.Set
@@ -79,14 +79,17 @@ class MediaTypeRecognizer {
   def getMediaType(urlStr: String): Either[String, MediaType] = {
     Try (new URL(urlStr)) match {
       case Success(url) =>
-        //val path = url.getPath
-        val pathT: String = urlStr.trim.toLowerCase
-        val dotLastIndex: Int = pathT.lastIndexOf(".")
-        val extension: String = if (dotLastIndex == -1) ""
-        else {
-          val slashLastIndex: Int = pathT.lastIndexOf("/")
-          if (dotLastIndex > slashLastIndex) pathT.substring(dotLastIndex + 1).trim
-          else ""
+        val query: Option[String] = Option(url.getQuery)
+        val extension: String = query match {
+          case Some(qry) =>
+            val dotLastIndex: Int = qry.lastIndexOf(".")
+            if (dotLastIndex == -1) "" else qry.substring(dotLastIndex + 1)
+          case None =>
+            val pathT: String = url.getPath.trim.toLowerCase
+            val dotLastIndex: Int = pathT.lastIndexOf(".")
+            val slashLastIndex: Int = pathT.lastIndexOf("/")
+            if ((dotLastIndex == -1) || (slashLastIndex > dotLastIndex)) ""
+            else pathT.substring(dotLastIndex + 1)
         }
 
         extension match {
@@ -94,19 +97,19 @@ class MediaTypeRecognizer {
             getMediaType(url) match {
               case Other =>
                 Try {
-                  val response: HttpResponse[String] = Http(urlStr).asString
+                  val response: HttpResponse[String] = Http(urlStr).option(HttpOptions.followRedirects(true))
+                    .timeout(connTimeoutMs = 5000, readTimeoutMs = 5000).asString
                   val headers: Map[String, IndexedSeq[String]] = response.headers
 
-                  headers.getOrElse("Location", Seq(urlStr)).head
+                  headers.getOrElse("Content-Type", Vector[String]()).headOption.getOrElse("")
                 } match {
-                  case Success(newUrl) =>
-                    if (newUrl.nonEmpty && !newUrl.equals(urlStr.trim)) getMediaType(newUrl)
-                    else Right(Other)
+                  case Success(contentType) => Right(getContentType(contentType))
                   case Failure(ex) => Left(ex.toString)
                 }
               case mt => Right(mt)
             }
           case "pdf" => Right(Pdf)
+          case pdfPlus if pdfPlus.startsWith("pdf?") => Right(Pdf)  // For urls of type: https://apps.who.int/iris/bitstream/handle/10665/330851/9789240001381-eng.pdf?ua=1#.YgO_JcMrfdw.link
           case video if videos contains video => Right(Video)
           case audio if audios contains audio => Right(Audio)
           case presentation if presentations contains presentation => Right(Presentation)
@@ -125,5 +128,16 @@ class MediaTypeRecognizer {
     else if(imageDomais.exists(domain.contains)) Image
     else if(presentationDomains.exists(domain.contains)) Presentation
     else Other
+  }
+
+  private def getContentType(contentType: String): MediaType = {
+    contentType.toLowerCase match {
+      case x if x.contains("pdf") => Pdf
+      case x if x.contains("video") => Video
+      case x if x.contains("audio") => Audio
+      case x if x.contains("mspowerpoint") || x.contains("presentation") => Presentation
+      case x if x.contains("image") => Image
+      case _ => Other
+    }
   }
 }

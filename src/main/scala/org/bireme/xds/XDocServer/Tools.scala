@@ -68,8 +68,8 @@ object Tools {
       }
     } match {
       case Success(is) => Some(is)
-      case Failure(ex) =>
-        println(s"--- Downloading error. url:$urls msg:${ex.toString}")
+      case Failure(_) =>
+        //println(s"--- Downloading error. url:$urls msg:${ex.toString}")
         None
     }
   }
