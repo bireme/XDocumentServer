@@ -1,9 +1,6 @@
 #!/bin/bash
 
-JAVA_HOME=/usr/local/java11
-PATH=${JAVA_HOME}/bin:${PATH}
-
-XDOCUMENTSERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer-dev
+XDOCUMENTSERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
 
 cd $XDOCUMENTSERVER_DIR/bin || exit
 

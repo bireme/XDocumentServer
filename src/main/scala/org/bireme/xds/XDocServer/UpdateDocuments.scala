@@ -15,7 +15,6 @@ import io.circe._
 import io.circe.parser._
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Set
 import scala.util.matching.Regex
 import scala.io.{BufferedSource, Source}
 import scala.util.{Failure, Success, Try}
@@ -254,7 +253,7 @@ class UpdateDocuments(pdfDocDir: String,
             if (updTime.isEmpty || !utime.head.equals(updTime.head)) { // Document has changed
               if (updateOne(docId)) println(s"+++ document updated OK. id=$docId")
               else println(s"--- document updated ERROR. id=$docId")
-            } else println(s"... document does not changed. id=$docId")
+            } else println(s"... document did not changed. id=$docId")
           case None => println(s"--- document update date ERROR. id=$docId")
         }
       case None => println(s"--- FI-Admin document 'updated_time' metadata missing ERROR. id=$docId code=404")

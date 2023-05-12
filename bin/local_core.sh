@@ -10,14 +10,11 @@ cd $XDOCSERVER_HOME || exit
 # Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa somente os documentos pdfs não armazenados
 FULL_INDEXING=1
 
-JAVA_HOME=/usr/local/java11
-PATH=${JAVA_HOME}/bin:${PATH}
-
 # Servidor
-SERVER=basalto01.bireme.br
+SERVER=diamante15.bireme.br
 
 # Diretório da Solr
-SOLR_DIR=/usr/local/solr-8.5.2
+SOLR_DIR=$XDOCSERVER_HOME/solr-8.11.2
 
 # Arquivo log
 LOG_FILE=$XDOCSERVER_HOME/logs/log_$NOW.txt
@@ -26,7 +23,7 @@ LOG_FILE=$XDOCSERVER_HOME/logs/log_$NOW.txt
 COL_DIR=$SOLR_DIR/server/solr
 
 # Diretório no servidor de produçao
-SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer-dev
+SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
 
 # Cria diretório de logs
 mkdir -p $XDOCSERVER_HOME/logs

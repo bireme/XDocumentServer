@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 
-# Vai para diretório da aplicação XDocumentServer
-cd /home/javaapps/sbt-projects/XDocumentServer-dev/ || exit
+XDOCUMENTSERVER_PATH=/home/javaapps/sbt-projects/XDocumentServer
 
-JAVA_HOME=/usr/local/java11
-PATH=${JAVA_HOME}/bin:${PATH}
+# Vai para diretório da aplicação XDocumentServer
+cd $XDOCUMENTSERVER_PATH || exit
 
 # Diretório da Solr
-SOLR_DIR=/usr/local/solr-8.5.2
+SOLR_DIR=$XDOCUMENTSERVER_PATH/solr-8.11.2
 
 # Porta do servidor Solr
 SOLR_PORT=9293
@@ -16,7 +15,7 @@ SOLR_PORT=9293
 COL_DIR=$SOLR_DIR/server/solr
 
 # Diretório no servidor de produçao
-SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer-dev
+SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
 
 # Faz a rotação do índice 'pdfs'
 ${SOLR_DIR}/bin/solr stop -p ${SOLR_PORT}
