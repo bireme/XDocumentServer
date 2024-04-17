@@ -10,7 +10,6 @@ package org.bireme.xds.XDocServer
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
-
 import org.apache.pdfbox.pdmodel.{PDDocument, PDDocumentInformation}
 
 import scala.util.{Failure, Success, Try}

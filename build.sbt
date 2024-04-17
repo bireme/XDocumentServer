@@ -8,29 +8,29 @@ lazy val root = (project in file("."))
     name := "XDocumentServer"
   )
 
-val pdfboxVersion = "2.0.28" //"2.0.25" //"2.0.22"
-val pdfboxAppVersion = "2.0.28" //"2.0.25" //"2.0.22"
+val pdfboxVersion = "2.0.31" //"2.0.28"
+val pdfboxAppVersion = "2.0.31" //"2.0.28"
 val jpef2000Version =  "1.4.0"
 val jaiImageioCoreVersion = "1.4.0"
 //val sttpVersion = "1.7.2" //"1.6.7"
 val vertxVersion = "3.9.1" //"3.8.0" //"3.8.4" nao tem para scala 2.13
-val solrCellVersion = "8.5.2" //"8.4.1"
+//val solrCellVersion = "8.5.2" //"8.4.1"
 val restletVersion = "2.4.3" //"2.4.2"
 val httpComponentsVersion = "4.5.13" //"4.5.12"
 val scalajHttpVersion = "2.4.2" //"2.4.1"
-val circeVersion = "0.14.5" //"0.14.1" //"0.13.0"
-val commonsIOVersion = "2.11.0" //"2.8.0"
+val circeVersion = "0.14.6" //"0.14.5"
+val commonsIOVersion = "2.16.1" //"2.11.0"
 val hasherVersion = "1.2.0"
-val airframeVersion = "23.5.3" //"22.1.0" //"21.2.0"
+val airframeVersion = "24.4.0" //"23.5.3"
 //val hairyfotrVersion = "0.1.17"
-val scalaTestVersion = "3.2.15" //"3.2.11" //"3.2.5"
+val scalaTestVersion = "3.2.18" //"3.2.15"
 val scalaXmlVersion = "1.2.0"
 //val swaydbVersion = "0.10.9" // "0.6"
-val playJsonVersion = "2.9.4" //"2.9.2" //"2.9.1"
+val playJsonVersion = "2.10.4" //"2.9.4"
 val sqliteVersion = "3.32.3.2" //"3.32.3"
 val slickVersion = "3.3.3" //"3.3.2"
-val logbackVersion = "1.4.7" //"1.2.10" //"1.2.3"
-val luceneVersion = "9.6.0" //"8.5.2" //"8.7.0"
+val logbackVersion = "1.5.5" //"1.4.7"
+val luceneVersion = "9.10.0" //"9.6.0"
 
 resolvers += "Restlet Repositories" at "https://maven.restlet.org"
 
@@ -60,7 +60,7 @@ libraryDependencies ++= Seq(
   //"com.typesafe.slick" %% "slick" % slickVersion,
   "ch.qos.logback" % "logback-classic" % logbackVersion,
   "org.apache.lucene" % "lucene-core" % luceneVersion,
-  "org.apache.lucene" % "lucene-backward-codecs" % luceneVersion
+  "org.apache.lucene" % "lucene-backward-codecs" % luceneVersion,
   //"io.swaydb" %% "swaydb" % swaydbVersion
 )
 
