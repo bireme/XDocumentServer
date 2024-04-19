@@ -29,7 +29,7 @@ val scalaXmlVersion = "1.2.0"
 val playJsonVersion = "2.10.4" //"2.9.4"
 val sqliteVersion = "3.32.3.2" //"3.32.3"
 val slickVersion = "3.3.3" //"3.3.2"
-val logbackVersion = "1.5.5" //"1.4.7"
+val logbackVersion = "1.5.6" //"1.5.5"
 val luceneVersion = "9.10.0" //"9.6.0"
 
 resolvers += "Restlet Repositories" at "https://maven.restlet.org"
