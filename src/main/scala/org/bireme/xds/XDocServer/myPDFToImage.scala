@@ -9,11 +9,10 @@ package org.bireme.xds.XDocServer
 
 import java.awt.image.BufferedImage
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
-
 import org.slf4j.LoggerFactory
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
-
+import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.ImageType
 import org.apache.pdfbox.rendering.PDFRenderer
@@ -45,7 +44,7 @@ object myPDFToImage {
     Try {
       val quality = 1.0f
       val dpi = 48//96
-      val document: PDDocument = PDDocument.load(doc)
+      val document: PDDocument = Loader.loadPDF(doc.readAllBytes) //PDDocument.load(doc)
       val renderer = new PDFRenderer(document)
 
       renderer.setSubsamplingAllowed(false)

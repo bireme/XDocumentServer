@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
 
 //https://github.com/bireme/fi-admin/wiki/API
 //https://fi-admin-api.bvsalud.org/api
-//http://basalto01.bireme.br:9293/solr/#/pdfs/query
+//http://diamante15.bireme.br:9293/solr/#/
 //curl http://localhost:9293/solr/admin/cores?action=STATUS
 //http://thumbs2.bireme.org/biblio-1101794/biblio-1101794.jpg
 
@@ -573,7 +573,7 @@ class UpdateDocuments(pdfDocDir: String,
         "com" -> comId,
         "col" -> colId,
         "ud" -> parseUpdDate(elem),
-        "tu" -> parseThumbUrl(docId.head,  if (url.isEmpty) "" else url.head),
+        "tu" -> parseThumbUrl(docId.head),
         "pu" -> parsePublisher(elem)
       )
       val meta2: Map[String, Set[String]] =
@@ -780,7 +780,7 @@ class UpdateDocuments(pdfDocDir: String,
 
       if (text.isEmpty) parseAbstr(elem.right, set)
       else {
-        val langTxt = if (lang.isEmpty) lang else s"($lang) $text"
+        val langTxt = if (lang.isEmpty) text else s"($lang) $text"
         parseAbstr(elem.right, set + langTxt)
       }
     } else set
@@ -936,9 +936,8 @@ class UpdateDocuments(pdfDocDir: String,
 
   private def parsePublisher(elem: ACursor): Set[String] = Set(elem.downField("publisher").as[String].getOrElse(""))
 
-  private def parseThumbUrl(id: String,
-                            url: String): Set[String] = thumbServUrl match {
-    case Some(tsu) => Set(s"$tsu?id=$id&url=$url")
+  private def parseThumbUrl(id: String): Set[String] = thumbServUrl match {
+    case Some(tsu) => Set(s"$tsu$id/$id.jpg")
     case None => Set()
   }
 
@@ -1060,7 +1059,7 @@ object UpdateDocuments extends App {
   }
   if (args.length < 4) usage()
 
-  val parameters = args.foldLeft[Map[String, String]](Map()) {
+  private val parameters = args.foldLeft[Map[String, String]](Map()) {
     case (map, par) =>
       val split = par.split(" *= *", 2)
 
@@ -1074,20 +1073,20 @@ object UpdateDocuments extends App {
   if (!parameters.contains("thumbDir")) usage()
   if (!parameters.contains("solrColUrl")) usage()
 
-  val pdfDocDir = parameters("pdfDocDir").trim
-  val thumbDir = parameters("thumbDir").trim
-  val decsPath = parameters("decsPath").trim
-  val solrColUrl = parameters("solrColUrl").trim
-  val thumbServUrl: String = parameters.get("thumbServUrl") match {
-    case Some(turl) => // http:/localhost:9090/thumbnailServer/getDocument
+  private val pdfDocDir = parameters("pdfDocDir").trim
+  private val thumbDir = parameters("thumbDir").trim
+  private val decsPath = parameters("decsPath").trim
+  private val solrColUrl = parameters("solrColUrl").trim
+  private val thumbServUrl: String = parameters.get("thumbServUrl") match {
+    case Some(turl) => //https://thumbs2.bireme.org/biblio-826748/biblio-826748.jpg
       val url = turl.trim
       if (url.endsWith("/")) url else s"$url/"
-    case None => "http://thumbnailserver.bvsalud.org/getDocument/"
+    case None => "https://thumbs2.bireme.org/"
   }
-  val docId = parameters.get("docId").map(_.trim)
-  val addMissing = parameters.contains("addMissing")
-  val updChanged = parameters.contains("updateChanged")
-  val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, decsPath, Some(thumbServUrl))
+  private val docId = parameters.get("docId").map(_.trim)
+  private val addMissing = parameters.contains("addMissing")
+  private val updChanged = parameters.contains("updateChanged")
+  private val updDocuments = new UpdateDocuments(pdfDocDir, solrColUrl, thumbDir, decsPath, Some(thumbServUrl))
 
   docId match {
     case Some(did) =>

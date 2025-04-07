@@ -21,7 +21,7 @@ XDOCSERVER_HOME=/home/javaapps/sbt-projects/XDocumentServer
 cd $XDOCSERVER_HOME || exit
 
 # Se 1 apaga índice anterior e indexa todos os documentos pdfs, caso contrário, indexa somente os documentos pdfs não armazenados
-FULL_INDEXING=1
+FULL_INDEXING=0
 
 # User
 OPERACAO=operacao
@@ -43,6 +43,9 @@ COL_DIR=$SOLR_DIR/server/solr
 
 # Diretório no servidor de produçao
 SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
+
+# Quantidade de maxima de memória permitida para a maquina virtual java
+XMX=4G
 
 # Cria diretório de logs
 mkdir -p $XDOCSERVER_HOME/logs
@@ -76,11 +79,11 @@ fi
 # Gera os arquivos pdfs e thumbnails e o índice lucene
 if [ "$FULL_INDEXING" -eq 0 ]; then
   bin/startSolr.sh   # Se o Solr tiver caído, inicia-o
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > $LOG_FILE
+  sbt "-J-Xmx$XMX runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > $LOG_FILE
   ret="$?"
 else
   bin/delstart.sh  # Reinicializa o índice pdfs e o servidor (que pode ficar com o índice em memória)
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > $LOG_FILE
+  sbt "-J-Xmx$XMX runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > $LOG_FILE
   ret="$?"
 fi
 
@@ -104,7 +107,7 @@ if [ "$ret" -ne 0 ]; then
   if [ -e "old/index/pdfs" ]; then
     mv old/index/pdfs ${COL_DIR}
   fi
-  sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents ERROR - `date '+%Y-%m-%d'`" -m "XDocumentServer - Erro na geracao de pdfs e/ou thumbnails" -t barbieri@paho.org -cc mourawil@paho.org ofi@bireme.org -s esmeralda.bireme.br
+  sendemail -f appofi@bireme.org -u "XDocumentServer - Updating documents ERROR - `date '+%Y-%m-%d'`" -m "XDocumentServer - Erro na geracao de pdfs e/ou thumbnails" -t barbieri@paho.org -cc ofi@bireme.org -s esmeralda.bireme.br
   exit 1
 fi
 

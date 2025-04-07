@@ -7,10 +7,11 @@
 
 package org.bireme.xds.XDocServer
 
+import org.apache.pdfbox.Loader
+
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
-
 import org.apache.pdfbox.pdmodel.{PDDocument, PDDocumentInformation}
 
 import scala.util.{Failure, Success, Try}
@@ -84,7 +85,7 @@ class LocalPdfDocServer(docServer: DocumentServer) extends DocumentServerImpl(do
 
     Try {
       if (source.isEmpty) throw new NullPointerException()
-      val pddoc: PDDocument = PDDocument.load(source.get)
+      val pddoc: PDDocument = Loader.loadPDF(source.get.readAllBytes)   //PDDocument.load(source.get)
       val info2: PDDocumentInformation = pddoc.getDocumentInformation
       val map2: Map[String, Set[String]] = Map(
         "title" -> (if (info2.getTitle == null) null else Set(info2.getTitle)),
