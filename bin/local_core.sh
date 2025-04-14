@@ -25,6 +25,9 @@ COL_DIR=$SOLR_DIR/server/solr
 # Diretório no servidor de produçao
 SERVER_DIR=/home/javaapps/sbt-projects/XDocumentServer
 
+# Quantidade de maxima de memória permitida para a maquina virtual java
+XMX=4G
+
 # Cria diretório de logs
 mkdir -p $XDOCSERVER_HOME/logs
 
@@ -57,11 +60,11 @@ fi
 # Gera os arquivos pdfs e thumbnails e o índice lucene
 if [ "$FULL_INDEXING" -eq 0 ]; then
   bin/startSolr.sh   # Se o Solr tiver caído, inicia-o
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > $LOG_FILE
+  sbt -J-Xmx$XMX "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/bases/dec.000/dec.dec/output/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument --addMissing --updateChanged" > $LOG_FILE
   ret="$?"
 else
   bin/delstart.sh  # Reinicializa o índice pdfs e o servidor (que pode ficar com o índice em memória)
-  sbt "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/usr/local/bireme/tabs/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > $LOG_FILE
+  sbt -J-Xmx$XMX  "runMain org.bireme.xds.XDocServer.UpdateDocuments -pdfDocDir=pdfs -thumbDir=thumbnails -decsPath=/bases/dec.000/dec.dec/output/decs -solrColUrl=http://localhost:9293/solr/pdfs -thumbServUrl=http://thumbnailserver.bvsalud.org/getDocument" > $LOG_FILE
   ret="$?"
 fi
 
